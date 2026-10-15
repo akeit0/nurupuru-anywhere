@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="ja">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Nurupuru Anywhere — UI Preview</title>
+<style>
+  *{box-sizing:border-box}body{margin:0;background:#f5f3ef;color:#313743;font:15px/1.7 system-ui,sans-serif}
+  .dev-bar{display:flex;align-items:center;gap:16px;flex-wrap:wrap;padding:14px 24px;border-bottom:1px solid #d9dce1;background:#fff}
+  .dev-bar strong{font-size:13px}.dev-bar small{color:#7b818c;font-size:11px}.states{display:flex;gap:5px;flex-wrap:wrap;margin-left:auto}
+  button{font:12px system-ui;border:1px solid #c5ccd5;border-radius:7px;background:white;color:#444e5c;padding:7px 10px;cursor:pointer}button:hover{background:#edf0f5}button:focus-visible{outline:2px solid #6b66ae;outline-offset:3px}
+  main{max-width:1100px;padding:48px 36px 180px;margin:auto}h1{font-size:30px;font-weight:650;letter-spacing:.02em;line-height:1.4;margin:0 0 12px}p{color:#737b87;font-size:13px;margin:0 0 32px}
+  .samples{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:28px;max-width:760px}figure{margin:0}.image-card{display:block;border-radius:14px;background:#fff;box-shadow:0 2px 14px #27354b08}img{display:block;width:100%;height:auto}figcaption{font-size:12px;color:#78828e;padding-top:12px}
+  .notes{margin-top:44px;max-width:550px;border-top:1px solid #d5d9df;padding-top:20px;font-size:12px;color:#7a8290}.notes code{font-size:11px}.spacer{height:400px}
+  @media(max-width:650px){.dev-bar{padding:12px 16px;gap:8px}.states{margin-left:0}main{padding:28px 20px 550px}h1{font-size:24px}.samples{gap:14px}}
+</style>
+<div class="dev-bar">
+  <div><strong>Nurupuru Anywhere</strong> <small>開発用プレビュー</small></div>
+  <div class="states" aria-label="UIの状態を確認">
+    <button data-state="idle">未選択</button><button data-state="selecting">画像選択</button><button data-state="brush">塗る</button><button data-state="erase">消す</button><button data-state="grab">つかむ</button><button data-state="off">OFF</button><button data-state="folded">畳む</button>
+  </div>
+</div>
+<main>
+  <h1>塗って、つかんで、ぷるぷる。</h1>
+  <p>画像を選び、動かしたいところを塗ってから、つかんでみてください。<br>上のボタンで、各状態のUIをすぐに確認できます。</p>
+  <div class="samples">
+    <figure><span class="image-card"><img id="sample" width="480" height="400" alt="青いぷるぷる"></span><figcaption>01 / まずはこちらで操作を確認</figcaption></figure>
+    <figure><span class="image-card"><img id="other" width="480" height="400" alt="オレンジの花"></span><figcaption>02 / 画像の変更と解除を確認</figcaption></figure>
+  </div>
+  <div class="notes">このページは拡張と同じ <code>dist/content.js</code> を使います。塗りと物理演算も動作します。<br>UIの変更は <code>src/content.js</code> と <code>src/panel.css</code> に反映してください。</div>
+  <div class="spacer"></div>
+</main>
+<script src="./preview.js"></script>
+</html>

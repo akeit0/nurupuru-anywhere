@@ -1,0 +1,19 @@
+{
+  "name": "nurupuru-anywhere",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "license": "Unlicense",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "dev": "node scripts/dev.mjs",
+    "test": "npm run build && node tests/extension.mjs && node tests/preview.mjs"
+  },
+  "devDependencies": {
+    "esbuild": "0.28.2",
+    "playwright": "1.64.0"
+  }
+}

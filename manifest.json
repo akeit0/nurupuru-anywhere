@@ -1,11 +1,12 @@
 {
   "manifest_version": 3,
-  "name": "Nurupuru Anywhere",
+  "name": "__MSG_extensionName__",
   "version": "0.1.0",
-  "description": "ページの画像を塗って、つかんで、ぷるぷる動かす。",
+  "description": "__MSG_extensionDescription__",
+  "default_locale": "en",
   "permissions": ["activeTab", "scripting"],
   "background": { "service_worker": "background.js" },
-  "action": { "default_title": "ぬるぷる：画像を選ぶ" },
+  "action": { "default_title": "__MSG_actionTitle__" },
   "content_security_policy": {
     "extension_pages": "script-src 'self' 'wasm-unsafe-eval'; object-src 'self'"
   }

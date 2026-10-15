@@ -1,3 +1,4 @@
+import { t } from './i18n.js';
 const LIMIT = 1600;
 function surface(width, height) {
   const c = document.createElement('canvas'), scale = Math.min(devicePixelRatio || 1, 2, LIMIT / Math.max(width, height));
@@ -21,7 +22,7 @@ export async function readSource(image, host) {
   if (!image.complete) await image.decode();
   const rect = imageRect(image), style = getComputedStyle(image);
   const sourceUrl = image.currentSrc || image.src;
-  if (rect.width < 8 || rect.height < 8 || !image.naturalWidth) throw Error('表示されている画像を選んでください。');
+  if (rect.width < 8 || rect.height < 8 || !image.naturalWidth) throw Error(t('visibleImage'));
   const c = surface(rect.width, rect.height), g = c.getContext('2d');
   try {
     const iw = image.naturalWidth, ih = image.naturalHeight;
@@ -44,7 +45,7 @@ export async function readSource(image, host) {
   // using activeTab, without re-requesting the original image URL.
   const left = Math.max(0, rect.left), top = Math.max(0, rect.top);
   const width = Math.min(innerWidth, rect.left + rect.width) - left, height = Math.min(innerHeight, rect.top + rect.height) - top;
-  if (width < 8 || height < 8) throw Error('画像を画面内に表示してから選んでください。');
+  if (width < 8 || height < 8) throw Error(t('bringIntoView'));
   let reply;
   const viewport = { width: innerWidth, height: innerHeight };
   host.style.setProperty('visibility', 'hidden', 'important');
@@ -52,11 +53,11 @@ export async function readSource(image, host) {
     await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
     reply = await chrome.runtime.sendMessage({ type: 'nurupuru:capture' });
   } finally { host.style.removeProperty('visibility'); }
-  if (!reply?.ok) throw Error(reply?.error || '画像を取得できませんでした。');
+  if (!reply?.ok) throw Error(reply?.error || t('captureFailed'));
   const bitmap = await createImageBitmap(await (await fetch(reply.dataUrl)).blob());
   try {
     const after = imageRect(image);
-    if (innerWidth !== viewport.width || innerHeight !== viewport.height || (image.currentSrc || image.src) !== sourceUrl || ['left', 'top', 'width', 'height'].some(key => Math.abs(after[key] - rect[key]) > 1)) throw Error('取得中に画像や画面サイズが変わりました。もう一度選んでください。');
+    if (innerWidth !== viewport.width || innerHeight !== viewport.height || (image.currentSrc || image.src) !== sourceUrl || ['left', 'top', 'width', 'height'].some(key => Math.abs(after[key] - rect[key]) > 1)) throw Error(t('captureChanged'));
     const crop = surface(width, height), ctx = crop.getContext('2d');
     ctx.drawImage(bitmap, left * bitmap.width / viewport.width, top * bitmap.height / viewport.height, width * bitmap.width / viewport.width, height * bitmap.height / viewport.height, 0, 0, crop.width, crop.height);
     return { image: crop, rect, capture: true, slice: { x: (left - rect.left) / rect.width, y: (top - rect.top) / rect.height, w: width / rect.width, h: height / rect.height } };

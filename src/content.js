@@ -1,3 +1,4 @@
+import { t } from './i18n.js';
 import { SoftMesh } from './core/physics.js';
 import { GLRenderer } from './core/renderer.js';
 import { DEFAULT_PARAMS, MATERIAL_PRESETS } from './core/settings.js';
@@ -17,7 +18,7 @@ function start() {
   const { host, root, $, canvas, hit, highlight } = createPanel();
   let renderer;
   let message = '';
-  function notice(text) { message = text;$('status').textContent = enabled ? message : 'OFF：元の画像を表示中';$('status').title = $('status').textContent; }
+  function notice(text) { message = text;$('status').textContent = enabled ? message : t('offStatus');$('status').title = $('status').textContent; }
   function requestFrame() { if (!raf && !stopped && enabled && !document.hidden) raf = requestAnimationFrame(frame); }
   function rectFor(e = effect) {
     const r = imageRect(e.target), s = e.source.slice;
@@ -44,7 +45,7 @@ function start() {
     renderer?.dispose();renderer = null;canvas.width = canvas.width;
     updateControls();
   }
-  function sourceChanged() { releaseImage();notice('画像が変わりました。「画像を選ぶ」で選び直してください。'); }
+  function sourceChanged() { releaseImage();notice(t('sourceChanged')); }
   const imageObserver = new ResizeObserver(requestFrame);
   const pageObserver = new MutationObserver(() => {
     if (effect && !effect.target.isConnected) sourceChanged();
@@ -54,25 +55,25 @@ function start() {
 
   function chooseImage() {
     finishGesture();generation++;selecting = true;highlight.hidden = true;
-    notice('ページの画像をクリック');updateControls();
+    notice(t('pickHint'));updateControls();
   }
   function cancelSelection() {
     selecting = false;highlight.hidden = true;updateControls();requestFrame();
-    notice(effect ? toolHelp() : '画像を選んで開始');
+    notice(effect ? toolHelp() : t('startHint'));
   }
   function detachImage() {
     generation++;loading = false;selecting = false;highlight.hidden = true;releaseImage();
-    notice('画像を解除しました');
+    notice(t('released'));
   }
-  function toolHelp() { return tool === 'grab' ? '塗った部分を引っぱって離す' : tool === 'erase' ? '動かさない部分の塗りを消す' : '動かす部分を塗って「つかむ」へ'; }
+  function toolHelp() { return tool === 'grab' ? t('grabHelp') : tool === 'erase' ? t('eraseHelp') : t('brushHelp'); }
   function updateControls() {
     const state = !enabled ? 'off' : loading ? 'loading' : selecting ? 'selecting' : effect ? tool : 'idle';
     $('panel').dataset.state = state;
-    $('enabled').textContent = enabled ? 'ON' : 'OFF';$('enabled').setAttribute('aria-pressed', String(enabled));$('enabled').title = enabled ? '効果を一時停止' : '効果を再開';
-    $('selectLabel').textContent = loading ? '読み込み中…' : selecting ? '画像を選択中' : effect ? '画像を変更' : '画像を選ぶ';
-    $('selectHint').textContent = selecting ? '中止' : effect?.target.alt || '';
+    $('enabled').textContent = enabled ? 'ON' : 'OFF';$('enabled').setAttribute('aria-pressed', String(enabled));$('enabled').title = enabled ? t('pause') : t('resume');
+    $('selectLabel').textContent = loading ? t('loading') : selecting ? t('selecting') : effect ? t('changeImage') : t('selectImage');
+    $('selectHint').textContent = selecting ? t('cancel') : effect?.target.alt || '';
     $('select').setAttribute('aria-pressed', String(selecting));
-    $('select').title = selecting ? 'ページ上の画像をクリック。もう一度押すと選択を中止。' : effect ? '画像を変更：' + (effect.target.alt || '選択した画像') : 'ページ上の画像を選ぶ';
+    $('select').title = selecting ? t('selectingTitle') : effect ? t('changeTitle') + (effect.target.alt || t('selectedImage')) : t('selectTitle');
     $('select').disabled = loading || !enabled;
     $('release').hidden = !effect && !loading;
     $('editing').hidden = !effect;
@@ -97,7 +98,7 @@ function start() {
     try {
       const source = await readSource(target, host);
       if (job !== generation || stopped) return;
-      if (!target.isConnected) throw Error('画像がページから取り除かれました。選び直してください。');
+      if (!target.isConnected) throw Error(t('imageRemoved'));
       releaseImage();
       const image = source.image, mask = document.createElement('canvas');
       mask.dataset.maskChannel = 'red';
@@ -109,12 +110,12 @@ function start() {
       effect = { target, source, mask, ctx, mesh, dirty: false, revision: 0, concealed: false };
       target.addEventListener('load', sourceChanged);imageObserver.observe(target);
       setTool('brush');
-      notice(source.capture ? '表示中の画像を取得しました。動かしたいところを塗ってください。' : '動かしたいところを塗り、「つかむ」で引っぱってください。');
+      notice(source.capture ? t('captured') : t('loaded'));
       requestFrame();
     } catch (error) {
       if (job !== generation || stopped) return;
       if (!effect) releaseImage();
-      notice(error.message || '画像を読み込めませんでした。');selecting = true;
+      notice(error.message || t('loadFailed'));selecting = true;
     } finally { if (job === generation) { loading = false;updateControls(); } }
   }
   function point(event) {
@@ -146,7 +147,7 @@ function start() {
     flushMask();
     if (active === 'grab') {
       params.grabRadius = Math.min(720, 110 / p.zoom / effect.mesh.scale * 720);
-      if (!effect.mesh.beginGrab(p.x, p.y, 'grab', params)) { notice('先に動かしたいところを塗ってください。');return; }
+      if (!effect.mesh.beginGrab(p.x, p.y, 'grab', params)) { notice(t('paintFirst'));return; }
     }
     gesture = { id: event.pointerId, tool: active, start: p, last: p };hit.setPointerCapture(event.pointerId);
     if (active !== 'grab') paint(p, p);
@@ -168,11 +169,11 @@ function start() {
     if (!effect || document.hidden || stopped || !enabled || selecting || loading) return;
     const e = effect, rect = rectFor(), original = imageRect(e.target), initial = e.source.rect;
     if (!e.target.isConnected || (e.source.capture && (Math.abs(original.width - initial.width) > 1 || Math.abs(original.height - initial.height) > 1)) || Math.abs(rect.width / rect.height - e.mesh.w / e.mesh.h) > .02) {
-      releaseImage();notice('画像の表示サイズが変わりました。選び直してください。');return;
+      releaseImage();notice(t('sizeChanged'));return;
     }
     const slice = e.source.slice;
     if (e.source.capture && (slice.w < .999 || slice.h < .999) && (Math.max(0, original.left) < rect.left - 1 || Math.max(0, original.top) < rect.top - 1 || Math.min(innerWidth, original.left + original.width) > rect.left + rect.width + 1 || Math.min(innerHeight, original.top + original.height) > rect.top + rect.height + 1)) {
-      releaseImage();notice('画像の表示範囲が変わりました。選び直してください。');return;
+      releaseImage();notice(t('areaChanged'));return;
     }
     if (rect.left > innerWidth || rect.top > innerHeight || rect.left + rect.width < 0 || rect.top + rect.height < 0) { hit.hidden = true;canvas.style.visibility = 'hidden';lastTime = 0;return; }
     hit.hidden = false;canvas.style.visibility = '';locate(hit, rect);flushMask();
@@ -217,7 +218,7 @@ function start() {
   }
   $('select').onclick = () => selecting ? cancelSelection() : chooseImage();
   $('release').onclick = detachImage;
-  function setFolded(folded) { $('panel').classList.toggle('folded', folded);$('fold').textContent = folded ? '開く' : '畳む';$('fold').setAttribute('aria-expanded', String(!folded)); }
+  function setFolded(folded) { $('panel').classList.toggle('folded', folded);$('fold').textContent = folded ? t('expand') : t('fold');$('fold').setAttribute('aria-expanded', String(!folded)); }
   $('fold').onclick = () => setFolded(!$('panel').classList.contains('folded'));
   $('enabled').onclick = () => {
     finishGesture();enabled = !enabled;lastTime = accumulator = 0;
@@ -255,5 +256,5 @@ function start() {
   document.addEventListener('pointermove', pointerOver, true);document.addEventListener('click', pickImage, true);document.addEventListener('keydown', keyDown, true);
   window.addEventListener('scroll', requestFrame, true);window.addEventListener('resize', requestFrame);window.addEventListener('blur', finishGesture);document.addEventListener('visibilitychange', visibility);
   globalThis.__nurupuruAnywhere = { wake() { setFolded(false);if (!effect && enabled && !loading && !selecting) chooseImage(); } };
-  highlight.hidden = true;syncParamControls();notice('ページの画像をクリック');updateControls();
+  highlight.hidden = true;syncParamControls();notice(t('pickHint'));updateControls();
 }

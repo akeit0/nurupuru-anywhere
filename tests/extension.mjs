@@ -7,7 +7,15 @@ import { chromium } from 'playwright';
 import { closedUI } from './closed-shadow.mjs';
 
 const root = fileURLToPath(new URL('../', import.meta.url));
+const locale = process.argv[2] || 'ja-JP', language = locale.startsWith('ja') ? 'ja' : 'en';
+const messages = JSON.parse(await readFile(path.join(root, '_locales', language, 'messages.json'), 'utf8'));
+const t = key => messages[key].message;
 const manifest = JSON.parse(await readFile(path.join(root, 'dist/manifest.json'), 'utf8'));
+assert.equal(manifest.default_locale, 'en');
+for (const lang of ['ja', 'en']) {
+  const packaged = JSON.parse(await readFile(path.join(root, 'dist/_locales', lang, 'messages.json'), 'utf8'));
+  assert.deepEqual(Object.keys(packaged).sort(), Object.keys(messages).sort());
+}
 assert.deepEqual(manifest.permissions, ['activeTab', 'scripting']);assert.equal(manifest.host_permissions, undefined);
 const svg = '<svg xmlns="http://www.w3.org/2000/svg" width="400" height="300"><defs><linearGradient id="g" x2="0" y2="1"><stop stop-color="#d5baff"/><stop offset="1" stop-color="#8870d5"/></linearGradient></defs><ellipse cx="200" cy="150" rx="150" ry="125" fill="url(#g)"/><circle cx="155" cy="150" r="10" fill="#342945"/><circle cx="245" cy="150" r="10" fill="#342945"/><path d="M177 174q23 28 46 0" stroke="#342945" stroke-width="7" fill="none"/></svg>';
 let foreignRequests = 0;
@@ -22,8 +30,8 @@ const server = http.createServer((req, res) => {
 await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
 await mkdir(path.join(root, 'test-results'), { recursive: true });
 const context = await chromium.launchPersistentContext('', {
-  channel: 'chromium', headless: true, viewport: { width: 1280, height: 900 },
-  args: ['--disable-extensions-except=' + path.join(root, 'dist'), '--load-extension=' + path.join(root, 'dist'), '--enable-unsafe-extension-debugging', '--enable-webgl', '--use-angle=swiftshader', '--enable-unsafe-swiftshader'],
+  channel: 'chromium', headless: true, viewport: { width: 1280, height: 900 }, locale,
+  args: ['--lang=' + locale, '--disable-extensions-except=' + path.join(root, 'dist'), '--load-extension=' + path.join(root, 'dist'), '--enable-unsafe-extension-debugging', '--enable-webgl', '--use-angle=swiftshader', '--enable-unsafe-swiftshader'],
 });
 try {
   const worker = context.serviceWorkers()[0] || await context.waitForEvent('serviceworker');
@@ -52,6 +60,11 @@ try {
   });
   const panel = page.locator('#nurupuru-anywhere');
   const closed = await closedUI(page), { ui, control } = closed;
+  assert.equal((await worker.evaluate(() => chrome.i18n.getUILanguage())).split('-')[0], language);
+  assert.equal(await worker.evaluate(() => chrome.i18n.getMessage('extensionDescription')), t('extensionDescription'));
+  assert.equal(await worker.evaluate(() => chrome.action.getTitle({})), t('actionTitle'));
+  assert.equal(await ui('panel').getAttribute('lang'), language);
+  assert.equal(await control('header strong').textContent(), t('brand') + ' Anywhere');
   assert.equal(await ui('panel').getAttribute('data-state'), 'selecting');
   assert.equal(await ui('editing').isVisible(), false, 'start with image selection before exposing editing controls');
   const positions = () => ui('canvas').evaluate(canvas => {
@@ -75,7 +88,7 @@ try {
   const rect = await ui('hit').boundingBox(), center = { x: rect.x + rect.width / 2, y: rect.y + rect.height / 2 };
   const rest = await positions();assert.ok(rest.length > 1000 && rest.every(Number.isFinite));
   await painted('grab', center, { x: center.x + 50, y: center.y });
-  assert.match(await ui('status').textContent(), /先に/);assert.deepEqual(await positions(), rest, 'an empty mask cannot be grabbed');
+  assert.equal(await ui('status').textContent(), t('paintFirst'));assert.deepEqual(await positions(), rest, 'an empty mask cannot be grabbed');
   const unpainted = await pixel(center);
   await ui('strength').evaluate(el => { el.value = '120';el.dispatchEvent(new Event('input')); });
   await control('[data-tool=brush]').click();await ui('strength').focus();await page.keyboard.press('g');
@@ -92,7 +105,7 @@ try {
   const released = await positions();assert.ok(released.every(Number.isFinite));assert.notDeepEqual(released, pulled, 'release animates recoil');
   await page.screenshot({ path: path.join(root, 'test-results/interaction.png') });
   await ui('reset').click();await page.waitForTimeout(100);assert.deepEqual(await positions(), rest, 'reset restores the rest shape');
-  await control('[data-tool=brush]').click();await ui('clear').click();await page.waitForTimeout(100);await painted('grab', center, { x: center.x + 30, y: center.y });assert.match(await ui('status').textContent(), /先に/);
+  await control('[data-tool=brush]').click();await ui('clear').click();await page.waitForTimeout(100);await painted('grab', center, { x: center.x + 30, y: center.y });assert.equal(await ui('status').textContent(), t('paintFirst'));
   assert.notEqual(await ui('panel').evaluate(el => getComputedStyle(el).getPropertyValue('--accent')), brushColor, 'grab has its own visible state color');
   await ui('select').click();assert.equal(await page.locator('#first').evaluate(el => el.style.opacity), '');
   await page.keyboard.press('Escape');await ui('hit').waitFor({ state: 'visible' });
@@ -101,7 +114,7 @@ try {
   await ui('select').click();assert.equal(await page.locator('#first').evaluate(el => el.style.opacity), '', 'switching image restores the previous element');
   const requests = foreignRequests;await page.locator('#foreign').click();
   await page.waitForFunction(() => document.getElementById('foreign').style.opacity === '0', { timeout: 15000 });
-  assert.match(await ui('status').textContent(), /取得しました/, 'cross-origin image uses real captureVisibleTab');
+  assert.equal(await ui('status').textContent(), t('captured'), 'cross-origin image uses real captureVisibleTab');
   assert.equal(foreignRequests, requests, 'extension does not re-download the image');
   const exposure = await page.evaluate(() => {
     const image = document.getElementById('foreign'), sample = document.createElement('canvas');
@@ -136,7 +149,7 @@ try {
   await page.evaluate(() => scrollBy(0, 120));await page.waitForTimeout(100);
   const tracked = await ui('hit').boundingBox(), imageBox = await page.locator('#foreign').boundingBox();assert.ok(Math.abs(tracked.y - imageBox.y) < 1, 'overlay follows scrolling');
   assert.equal(await ui('canvas').evaluate(el => getComputedStyle(el).position), 'absolute', 'effect is anchored in the document, not fixed to the screen');
-  await ui('fold').click();assert.equal(await ui('detail').isVisible(), false);assert.equal(await ui('enabled').isVisible(), true);assert.equal(await ui('release').isVisible(), true, 'image removal remains accessible while folded');assert.equal(await ui('close').textContent(), '閉じる');
+  await ui('fold').click();assert.equal(await ui('detail').isVisible(), false);assert.equal(await ui('enabled').isVisible(), true);assert.equal(await ui('release').isVisible(), true, 'image removal remains accessible while folded');assert.equal(await ui('close').textContent(), t('close'));
   await ui('enabled').click();assert.equal(await ui('enabled').textContent(), 'OFF');assert.equal(await page.locator('#foreign').evaluate(el => el.style.opacity), '');assert.equal(await ui('hit').isVisible(), false, 'OFF restores normal page interaction');
   assert.equal(await ui('panel').getAttribute('data-state'), 'off');assert.match(await ui('status').textContent(), /OFF/);
   await page.locator('#foreign').evaluate(el => el.style.setProperty('opacity', '.6', 'important'));
@@ -146,7 +159,7 @@ try {
   assert.equal(await page.locator('#foreign').evaluate(el => el.style.opacity), '0.6', 'page opacity changes while OFF survive re-enabling and release');
   assert.equal(await page.locator('#foreign').evaluate(el => el.style.getPropertyPriority('opacity')), 'important');
   assert.equal(await ui('editing').isVisible(), false);assert.equal(await ui('panel').getAttribute('data-state'), 'idle');
-  assert.equal(await ui('select').textContent(), '画像を選ぶ');assert.equal(await ui('softness').inputValue(), '75', 'release preserves shared settings');
+  assert.equal(await ui('select').textContent(), t('selectImage'));assert.equal(await ui('softness').inputValue(), '75', 'release preserves shared settings');
   await ui('select').click();await page.locator('#first').click();await ui('hit').waitFor({ state: 'visible' });
   await ui('close').click();assert.equal(await page.locator('#nurupuru-anywhere').count(), 0);assert.equal(await page.locator('#foreign').evaluate(el => el.style.opacity), '0.6', 'closing preserves the previously released image');
   assert.equal(await page.locator('#first').evaluate(el => el.style.opacity), '', 'closing also removes the current image effect');
@@ -159,7 +172,7 @@ try {
   assert.equal(await page.locator('#foreign').evaluate(el => el.style.opacity), '0.6');
   await ui('select').click();await page.evaluate(() => document.getElementById('foreign').click());
   await page.setViewportSize({ width: 1180, height: 900 });
-  await closed.waitFor(root => /取得中/.test(root.getElementById('status').textContent));
+  await closed.waitFor((root, expected) => root.getElementById('status').textContent === expected, t('captureChanged'));
   assert.equal(await ui('editing').isVisible(), false, 'a resized capture is rejected instead of applying misaligned pixels');
   await closed.evaluate(root => { document.getElementById('foreign').click();root.getElementById('close').click(); });
   await page.waitForTimeout(700);assert.equal(await panel.count(), 0, 'closing during capture cannot recreate the extension UI');
@@ -170,5 +183,5 @@ try {
   assert.equal(await ui('editing').isVisible(), false, 'removing the selected source releases its effect');
   await ui('close').click();
   assert.deepEqual(errors, []);
-  console.log('PASS: unpacked extension, page-world screenshot isolation, CSP, direct/captured images, mask/physics, shared settings, positioning, OFF/style restoration, canceled captures, viewport changes and teardown');
+  console.log('PASS (' + locale + '): unpacked extension, page-world screenshot isolation, CSP, direct/captured images, mask/physics, shared settings, positioning, OFF/style restoration, canceled captures, viewport changes and teardown');
 } finally { await context.close();await new Promise(resolve => server.close(resolve));await new Promise(resolve => foreign.close(resolve)); }

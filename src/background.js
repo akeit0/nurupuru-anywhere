@@ -1,13 +1,14 @@
+import { t } from './i18n.js';
 export async function activate(tab) {
   if (!tab?.id) return;
   try {
     await chrome.scripting.executeScript({ target: { tabId: tab.id }, files: ['content.js'] });
     await chrome.action.setBadgeText({ tabId: tab.id, text: '' });
-    await chrome.action.setTitle({ tabId: tab.id, title: 'ぬるぷる：画像を選ぶ' });
+    await chrome.action.setTitle({ tabId: tab.id, title: t('actionTitle') });
   } catch (error) {
     console.warn('Nurupuru Anywhere:', error.message);
     await chrome.action.setBadgeText({ tabId: tab.id, text: '!' });
-    await chrome.action.setTitle({ tabId: tab.id, title: 'このページでは使えません。通常のWebページで開いてください。' });
+    await chrome.action.setTitle({ tabId: tab.id, title: t('unsupportedPage') });
   }
 }
 chrome.action.onClicked.addListener(activate);
@@ -22,7 +23,7 @@ chrome.runtime.onMessage.addListener((message, sender, reply) => {
     nextCapture = now + delay + 600;
     if (delay) await new Promise(resolve => setTimeout(resolve, delay));
     const tab = await chrome.tabs.get(tabId);
-    if (!tab.active || !(await chrome.windows.get(tab.windowId)).focused) throw Error('対象のタブを表示したまま選択してください。');
+    if (!tab.active || !(await chrome.windows.get(tab.windowId)).focused) throw Error(t('keepTabVisible'));
     return { ok: true, dataUrl: await chrome.tabs.captureVisibleTab(tab.windowId, { format: 'png' }) };
   })().then(reply, error => reply({ ok: false, error: error.message }));
   return true;

@@ -1,3 +1,4 @@
+import { t } from '../i18n.js';
 import { DEFAULT_PARAMS } from './settings.js';
 import { clamp, toColorRGB } from './math.js';
 
@@ -53,7 +54,7 @@ export class GLRenderer {
     this.canvas=canvas;
     this.gl=canvas.getContext('webgl2',{alpha:true,antialias:true,depth:false,stencil:false,
       powerPreference:'high-performance',preserveDrawingBuffer:preserve,premultipliedAlpha:true});
-    if(!this.gl)throw Error('WebGL2 を初期化できませんでした。GPUが有効な対応ブラウザで開いてください。');
+    if(!this.gl)throw Error(t('webglFailed'));
     const g=this.gl;
     this.program=this.makeProgram(vs,fs);
     this.vao=g.createVertexArray();this.vbo=g.createBuffer();this.uvbo=g.createBuffer();this.ibo=g.createBuffer();

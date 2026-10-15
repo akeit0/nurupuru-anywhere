@@ -10,7 +10,7 @@
   "scripts": {
     "build": "node scripts/build.mjs",
     "dev": "node scripts/dev.mjs",
-    "test": "npm run build && node tests/extension.mjs && node tests/preview.mjs"
+    "test": "npm run build && node tests/extension.mjs ja-JP && node tests/extension.mjs en-US && node tests/preview.mjs"
   },
   "devDependencies": {
     "esbuild": "0.28.2",

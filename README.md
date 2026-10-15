@@ -1,103 +1,105 @@
 # Nurupuru Anywhere
 
-ページ上の画像を塗って、つかんで、ぷるぷる動かす Chrome / Edge 拡張機能です。
-[ぬるぷる](https://github.com/akeit0/nurupuru)の物理演算を使っています。
+English | [日本語](README_JA.md)
 
-対象は一度に1枚。画像は元の要素の位置に重なり、ページのスクロールに追従します。
+Make web images wobble like jelly. Paint an area, grab it, and watch it bounce back.
+A Chrome / Edge extension powered by the physics engine from [Nurupuru](https://github.com/akeit0/nurupuru).
 
-## インストール
+Work with one image at a time. The effect stays over the original image and follows page scrolling.
+The interface uses Japanese when your browser's display language is Japanese, and English otherwise.
 
-1. [Releases](https://github.com/akeit0/nurupuru-anywhere/releases/latest)から **`nurupuru-anywhere-0.1.0.zip`** をダウンロードする。`Source code (zip)` は開発用のソースです。
-2. ZIPを、保存しておける場所に展開する。
-3. Chrome の `chrome://extensions`、または Edge の `edge://extensions` を開く。
-4. デベロッパーモードを有効にする。
-5. 「パッケージ化されていない拡張機能を読み込む」で、展開した **`manifest.json` があるフォルダー**を選ぶ。
+## Installation
 
-Node.jsやビルドは不要です。インストール後も展開したフォルダーは削除しないでください。
-更新は手動です。同じフォルダーの内容を新しいZIPの内容で置き換え、拡張機能の管理画面で再読み込みし、対象のページも再読み込みしてください。
+1. Download **`nurupuru-anywhere-0.1.0.zip`** from [Releases](https://github.com/akeit0/nurupuru-anywhere/releases/latest). `Source code (zip)` is for development.
+2. Extract the ZIP to a folder you can keep.
+3. Open `chrome://extensions` in Chrome or `edge://extensions` in Edge.
+4. Turn on **Developer mode**.
+5. Click **Load unpacked** and select the extracted folder containing **`manifest.json`**.
 
-## 使い方
+No Node.js installation or build step is needed. Keep the extracted folder after installation.
+Updates are manual: replace the contents of that folder with the new ZIP's contents, reload the extension on the extensions page, and reload the web page too.
 
-1. 通常のWebページで、拡張機能のツールバーボタンを押す。
-2. 動かしたい画像をクリックして選ぶ。
-3. 「塗る」で動かす部分を塗る。「動きやすさ」は0が固定、255が最も動く設定。
-4. 「つかむ」で塗った部分を引っぱり、離す。
+## Usage
 
-「材質」ではプリセットと、やわらかさ・戻る速さ・減衰を調整できます。
-ブラシと材質の設定は画像を選び直しても引き継ぎます。画像ごとの保存はありません。
+1. Open a regular web page and click the extension's toolbar button.
+2. Click the image you want to animate.
+3. Use **Paint** to mark the areas that should move. **Mobility** ranges from 0 (fixed) to 255 (most movable).
+4. Use **Grab** to pull a painted area, then release it.
 
-| 操作 | 動作 |
+Under **Material**, choose a preset or adjust softness, return speed, and damping.
+Brush and material settings carry over when you select another image. Settings are not saved per image.
+
+| Control | Action |
 | --- | --- |
-| B / E / G | 塗る / 消す / つかむ |
-| 塗るときに右ドラッグ | 一時的に消す |
-| Esc | 画像選択を中止 |
-| ON / OFF | 効果を切り替え。OFFでは元の画像とページ操作に戻り、塗りは保持 |
-| 畳む / 開く | 操作パネルの詳細を折りたたむ |
-| 画像を解除 | 現在の画像だけを元に戻す。パネルと共通の設定は保持 |
-| 閉じる | 画像を元に戻し、拡張の操作を終了 |
+| B / E / G | Paint / Erase / Grab |
+| Right-drag while painting | Temporarily erase |
+| Esc | Cancel image selection |
+| ON / OFF | Toggle the effect. OFF restores the original image and page interaction while keeping the mask |
+| Fold / Expand | Collapse or expand the detailed controls |
+| Release image | Restore the current image and remove its mask. Keep the panel and shared settings |
+| Close | Restore the image and close the extension controls |
 
-畳んだ状態でも、現在の状態・「ON/OFF」・「画像を解除」は表示されます。
-拡張機能のツールバーボタンをもう一度押すと、パネルを開けます。
-画像の選択状態は「画像を選ぶ」ボタン内に表示します。
-画像の変更中に「画像を選択中／中止」をもう一度押すか Esc を押すと、変更前の塗りと効果に戻れます。
+The current status, ON/OFF, and Release image remain available while the panel is folded.
+Click the extension's toolbar button again to expand the panel.
+The image selection state appears inside the Select image button.
+While changing images, click Selecting image / Cancel again or press Esc to return to the previous mask and effect.
 
-状態は文字に加えて色で表示します。画像選択は紫、塗るは緑、消すはオレンジ、つかむは青、OFFはグレーです。
+States are shown with text and color: purple for image selection, green for Paint, orange for Erase, blue for Grab, and gray for OFF.
 
-## 対応範囲と画像の扱い
+## Supported images and data handling
 
-- 対象はページ内の通常の `img` 要素です。CSS背景、動画、iframe内の画像、回転などの複雑な変形には対応していません。
-- 画像を直接読み取る場合、`img` 自身のCSS背景・枠・影などは描画に引き継ぎません。親要素の装飾はそのまま残ります。
-- 別ドメインなど、画像のピクセルを直接読めない場合は、ブラウザの画面取得で表示中の部分を使います。この場合、背景や重なった要素も含まれ、透過は維持されません。
-- 画面取得後に画像のサイズや表示範囲が変わった場合は、元の画像に戻ります。もう一度選んでください。動く画像も、選択時の静止画として扱います。
-- ブラウザの設定ページや拡張機能ストアなど、拡張機能を実行できないページでは使えません。
+- Supports regular `img` elements on the page. CSS backgrounds, videos, images inside iframes, and complex transforms such as rotation are not supported.
+- When reading an image directly, CSS backgrounds, borders, and shadows on the `img` itself are not included in the effect. Decorations on its parent remain visible.
+- If image pixels cannot be read directly, for example because the image is on another domain, the extension captures the visible area using the browser's screen capture API. This includes the background and any overlapping elements, and does not preserve transparency.
+- If the image size or visible area changes after capture, the original image is restored. Select it again to continue. Animated images are treated as a still image at selection time.
+- Browser settings pages, extension stores, and other pages that block extensions are not supported.
 
-処理はブラウザ内で行い、画像や画面取得データを外部へ送信・保存しません。
-元の画像URLへの追加リクエストも行いません。
-権限は、ユーザーが起動したタブで実行するための `activeTab` と `scripting` のみです。
+Processing takes place in your browser. Images and screen capture data are not sent to or stored on external servers.
+The extension makes no additional requests to the original image URL.
+It only requests `activeTab` and `scripting` permissions to run in the tab where you activate it.
 
-## 利用上の注意
+## Usage notice
 
-- 対象の画像の著作権・肖像権などの権利や、利用するサイトの規約を確認し、利用者自身の責任で使用してください。第三者の権利を侵害する利用や違法な利用はしないでください。
-- 本拡張機能は現状のまま提供し、動作や結果を保証しません。
-- 開発者は、適用法令で認められる範囲で、本拡張機能の利用により生じた損害について責任を負いません。
+- Check the copyright, portrait rights, and other rights associated with the images, as well as the site's terms. You are responsible for your use of the extension. Do not use it illegally or infringe third-party rights.
+- The extension is provided "as is," without guarantees regarding functionality or results.
+- To the extent permitted by applicable law, the developer is not liable for damages arising from use of the extension.
 
-## 開発
+## Development
 
-Node.js 22 以上で、次を実行します。
+With Node.js 22 or later, run:
 
 ```sh
 npm ci
 npm run build
 ```
 
-拡張機能として動かす場合は、ブラウザの拡張機能管理画面から **`dist` フォルダー**を読み込みます。
-ビルドし直した後は、拡張機能と対象のページを再読み込みしてください。
+To run the extension, load the **`dist` folder** from your browser's extensions page.
+After rebuilding, reload both the extension and the web page.
 
-拡張機能をインストールせずに、[開発用HTML](dev/index.html)で実際と同じUIを確認できます。
-先に `npm run build` を実行してからHTMLを直接開くか、次のサーバーを使ってください。
+You can also try the actual interface in the [development HTML preview](dev/index.html) without installing the extension.
+Run `npm run build` first, then open the HTML file directly or start the development server:
 
 ```sh
 npm run dev
 ```
 
-`http://127.0.0.1:4174/dev/` を開きます。ソースの変更は自動ビルドされ、ページを再読み込みすると反映されます。
-上部のボタンで未選択・画像選択・塗る・消す・つかむ・OFF・折りたたみを確認できます。
-拡張と同じコードを使い、サンプル画像の塗りと物理演算も動きます。開発用HTMLは拡張の `dist` に含めません。
+Open `http://127.0.0.1:4174/dev/`. Source changes rebuild automatically; reload the page to see them.
+The buttons at the top let you preview idle, image selection, Paint, Erase, Grab, OFF, and folded states.
+The preview uses the same code as the extension, including mask painting and physics. Development HTML is not included in `dist`.
 
-動作テスト：
+Run the tests:
 
 ```sh
 npx playwright install chromium
 npm test
 ```
 
-実際の拡張機能を読み込んだ Chromium で、画像選択、画面取得、塗り、つかむ動作、
-スクロール追従、折りたたみ、ON/OFF、解除、取得中のキャンセルと画面サイズ変更、元画像の復元を確認します。
-スクリーンショットは `test-results` に出力します。
+Tests load the actual extension in Chromium and check image selection, screen capture, painting, grabbing,
+scroll tracking, folding, ON/OFF, release, cancellation during capture, viewport changes, and restoration of the original image.
+Screenshots are written to `test-results`.
 
-`src/core` は Nurupuru 1.0.1 の物理演算・描画コードです。
-Wasm scalar を使い、利用できない場合は JavaScript に切り替わります。
-通常のビルドに C コンパイラーは不要です。
+`src/core` contains the physics and rendering code from Nurupuru 1.0.1.
+It uses scalar Wasm with a JavaScript fallback. A C compiler is not needed for a normal build.
 
-ライセンスは [Unlicense](LICENSE)。Wasmに含まれる第三者コードについては
-[THIRD_PARTY_NOTICES.txt](THIRD_PARTY_NOTICES.txt)を参照してください。
+Licensed under the [Unlicense](LICENSE). See [THIRD_PARTY_NOTICES.txt](THIRD_PARTY_NOTICES.txt)
+for third-party code included in the Wasm module.

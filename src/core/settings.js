@@ -9,7 +9,7 @@ export const DEFAULT_PARAMS = Object.freeze({
   "renderMode": "smooth",
   "brushSize": 68,
   "brushStrength": 255,
-  "softness": 35,
+  "softness": 50,
   "areaKeep": 68,
   "returnSpeed": 48,
   "damping": 32,
@@ -31,6 +31,6 @@ export const DEFAULT_PARAMS = Object.freeze({
   "pressure": true
 });
 
-export const MATERIAL_PRESETS = {jelly:{softness:35,areaKeep:68,returnSpeed:48,damping:32},
-    rubber:{softness:15,areaKeep:83,returnSpeed:64,damping:20},
-    soft:{softness:80,areaKeep:40,returnSpeed:30,damping:60}};
+export const MATERIAL_PRESETS = {jelly:{softness:50,areaKeep:68,returnSpeed:48,damping:32},
+    rubber:{softness:25,areaKeep:83,returnSpeed:64,damping:20},
+    soft:{softness:75,areaKeep:40,returnSpeed:30,damping:60}};

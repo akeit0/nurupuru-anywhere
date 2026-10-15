@@ -192,9 +192,8 @@ export class SoftMesh {
   material(p){
     const key=[p.softness,p.areaKeep,p.returnSpeed,p.damping,p.anchor,p.grip].join(',');
     if(key===this.cacheKey)return;this.cacheKey=key;
-    const hardness=1-p.softness/100;
-    // Extra stiffness is concentrated in the bottom 20% of softness.
-    // The previous zero endpoint (~3.0) was still quite compliant.
+    // Give firm/intermediate materials more slider travel, keeping 0 and 100.
+    const hardness=Math.sqrt(1-p.softness/100);
     this.mu=.055*Math.exp(4*hardness+2.2*Math.pow(hardness,8));
     this.bulk=.18*Math.exp(p.areaKeep*.055);
     this.omega=TAU*(.35+p.returnSpeed*.022);

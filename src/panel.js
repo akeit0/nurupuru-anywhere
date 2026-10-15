@@ -20,7 +20,7 @@ export function createPanel() {
       <div id="grab"><span>塗った部分をドラッグして離す</span><button id="reset">揺れを戻す</button></div>
       <details id="material"><summary>材質</summary>
         <div class="presets" role="group" aria-label="材質プリセット"><button data-material="rubber">硬め</button><button data-material="jelly" aria-pressed="true">標準</button><button data-material="soft">やわらかめ</button></div>
-        <label>やわらかさ <input id="softness" type="range" min="0" max="100" value="35"><output id="softnessValue">35</output></label>
+        <label>やわらかさ <input id="softness" type="range" min="0" max="100"><output id="softnessValue"></output></label>
         <label>戻る速さ <input id="returnSpeed" type="range" min="0" max="100" value="48"><output id="returnSpeedValue">48</output></label>
         <label>減衰 <input id="damping" type="range" min="0" max="100" value="32"><output id="dampingValue">32</output></label>
       </details>

@@ -58,6 +58,8 @@ Processing takes place in your browser. Images and screen capture data are not s
 The extension makes no additional requests to the original image URL.
 It only requests `activeTab` and `scripting` permissions to run in the tab where you activate it.
 
+See the [Privacy Policy](PRIVACY.md) for details.
+
 ## Usage notice
 
 - Check the copyright, portrait rights, and other rights associated with the images, as well as the site's terms. You are responsible for your use of the extension. Do not use it illegally or infringe third-party rights.

@@ -3,7 +3,7 @@ import styles from './panel.css';
 export function createPanel() {
   const host = document.createElement('div');host.id = 'nurupuru-anywhere';
   for (const [key, value] of Object.entries({ all: 'initial', position: 'absolute', left: '0', top: '0', width: '0', height: '0', 'z-index': '2147483647', 'pointer-events': 'none' })) host.style.setProperty(key, value, 'important');
-  const root = host.attachShadow({ mode: 'open' });
+  const root = host.attachShadow({ mode: 'closed' });
   root.innerHTML = `<style>${styles}</style><canvas id="canvas"></canvas><div id="highlight"></div><div id="hit" hidden></div>
     <section id="panel" aria-label="Nurupuru Anywhere">
       <header><strong>ぬるぷる <small>Anywhere</small></strong><span id="status" role="status" aria-live="polite"></span><button id="fold" aria-expanded="true" aria-controls="detail">畳む</button><button id="close" title="画像を元に戻して、拡張の操作を閉じる">閉じる</button></header>

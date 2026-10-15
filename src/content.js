@@ -207,7 +207,8 @@ function start() {
     event.preventDefault();event.stopImmediatePropagation();void selectImage(image);
   }
   function keyDown(event) {
-    if (!enabled || loading || event.defaultPrevented || event.ctrlKey || event.metaKey || event.altKey || event.isComposing || event.composedPath().some(node => node.matches?.('input,textarea,[contenteditable],select'))) return;
+    const input = 'input,textarea,[contenteditable],select';
+    if (!enabled || loading || event.defaultPrevented || event.ctrlKey || event.metaKey || event.altKey || event.isComposing || root.activeElement?.matches(input) || event.composedPath().some(node => node.matches?.(input))) return;
     if (event.key === 'Escape') {
       finishGesture();if (selecting) cancelSelection();return;
     }

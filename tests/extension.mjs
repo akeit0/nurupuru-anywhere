@@ -4,6 +4,7 @@ import path from 'node:path';
 import { mkdir, readFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import { chromium } from 'playwright';
+import { closedUI } from './closed-shadow.mjs';
 
 const root = fileURLToPath(new URL('../', import.meta.url));
 const manifest = JSON.parse(await readFile(path.join(root, 'dist/manifest.json'), 'utf8'));
@@ -15,7 +16,7 @@ await new Promise(resolve => foreign.listen(0, '127.0.0.1', resolve));
 const other = 'http://127.0.0.1:' + foreign.address().port;
 const server = http.createServer((req, res) => {
   if (req.url === '/image.svg') { res.writeHead(200, { 'Content-Type': 'image/svg+xml' });res.end(svg);return; }
-  res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', 'Content-Security-Policy': "default-src 'self'; script-src 'none'; style-src 'unsafe-inline'; img-src 'self' " + other });
+  res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', 'Content-Security-Policy': "default-src 'self'; script-src 'none'; style-src 'unsafe-inline'; require-trusted-types-for 'script'; trusted-types 'none'; img-src 'self' " + other });
   res.end('<!doctype html><meta charset="utf-8"><title>Image fixtures</title><style>body{margin:32px;background:#f9f5ee;color:#302941;font:16px system-ui}h1{font-size:24px}main{display:flex;gap:40px}img{display:block;width:400px;height:300px}a{display:block}.spacer{height:1200px}</style><h1>ページ上の画像で、ぬるぷる。</h1><p>このページの画像を選んで動かします。</p><main><a href="/navigated"><img id="first" src="/image.svg"></a><img id="foreign" src="' + other + '/image.svg"></main><div class="spacer"></div>');
 });
 await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
@@ -30,6 +31,15 @@ try {
   assert.equal(await worker.evaluate(() => chrome.action.onClicked.hasListeners()), true, 'service worker is ready');
   const page = await context.newPage(), errors = [];
   page.on('pageerror', error => errors.push(error.message));
+  await page.addInitScript(() => {
+    const attach = Element.prototype.attachShadow;
+    globalThis.pageShadowRoots = [];
+    Element.prototype.attachShadow = function (options) { const root = attach.call(this, options);pageShadowRoots.push(root);return root; };
+    globalThis.pageInternalEvents = [];
+    document.addEventListener('pointerdown', event => {
+      if (event.target.id === 'nurupuru-anywhere') pageInternalEvents.push(event.composedPath().some(node => node.id === 'hit' || node instanceof HTMLCanvasElement));
+    }, true);
+  });
   await page.goto('http://127.0.0.1:' + server.address().port);
   const browserCdp = await context.browser().newBrowserCDPSession();
   const { targetInfos } = await browserCdp.send('Target.getTargets', { filter: [{ type: 'tab', exclude: false }] });
@@ -41,7 +51,7 @@ try {
     console.log({ errors, tabs: await worker.evaluate(async () => { const tabs = await chrome.tabs.query({ active: true });return Promise.all(tabs.map(async tab => ({ id: tab.id, url: tab.url, badge: await chrome.action.getBadgeText({ tabId: tab.id }), title: await chrome.action.getTitle({ tabId: tab.id }) }))); }) });throw error;
   });
   const panel = page.locator('#nurupuru-anywhere');
-  const ui = id => panel.locator('#' + id);
+  const closed = await closedUI(page), { ui, control } = closed;
   assert.equal(await ui('panel').getAttribute('data-state'), 'selecting');
   assert.equal(await ui('editing').isVisible(), false, 'start with image selection before exposing editing controls');
   const positions = () => ui('canvas').evaluate(canvas => {
@@ -53,7 +63,7 @@ try {
     return page.evaluate(async data => { const image = await createImageBitmap(new Blob([Uint8Array.from(atob(data), x => x.charCodeAt(0))], { type: 'image/png' }));const canvas = document.createElement('canvas');canvas.width = canvas.height = 1;const g = canvas.getContext('2d');g.drawImage(image, 0, 0);image.close();return [...g.getImageData(0, 0, 1, 1).data]; }, png.toString('base64'));
   };
   const painted = async (tool, from, to) => {
-    await panel.locator('[data-tool=' + tool + ']').click();await page.mouse.move(from.x, from.y);await page.mouse.down();await page.mouse.move(to.x, to.y, { steps: 12 });await page.mouse.up();
+    await control('[data-tool=' + tool + ']').click();await page.mouse.move(from.x, from.y);await page.mouse.down();await page.mouse.move(to.x, to.y, { steps: 12 });await page.mouse.up();
   };
   await page.locator('#first').click();
   await page.waitForFunction(() => document.getElementById('first').style.opacity === '0');
@@ -68,28 +78,61 @@ try {
   assert.match(await ui('status').textContent(), /先に/);assert.deepEqual(await positions(), rest, 'an empty mask cannot be grabbed');
   const unpainted = await pixel(center);
   await ui('strength').evaluate(el => { el.value = '120';el.dispatchEvent(new Event('input')); });
+  await control('[data-tool=brush]').click();await ui('strength').focus();await page.keyboard.press('g');
+  assert.equal(await ui('panel').getAttribute('data-state'), 'brush', 'tool shortcuts respect a focused slider in the closed shadow root');
+  await page.keyboard.press('ArrowLeft');assert.equal(await ui('strength').inputValue(), '119');
+  await page.keyboard.press('ArrowRight');assert.equal(await ui('strength').inputValue(), '120');
+  await ui('strength').evaluate(el => el.blur());await page.keyboard.press('g');
+  assert.equal(await ui('panel').getAttribute('data-state'), 'grab', 'tool shortcuts work outside inputs');
   await painted('brush', { x: center.x - 50, y: center.y }, { x: center.x + 50, y: center.y });
   assert.notDeepEqual(await pixel(center), unpainted, 'paint displays the mask');
-  await panel.locator('[data-tool=grab]').click();await page.mouse.move(center.x, center.y);await page.mouse.down();await page.mouse.move(center.x + 90, center.y + 60, { steps: 16 });await page.waitForTimeout(200);
+  await control('[data-tool=grab]').click();await page.mouse.move(center.x, center.y);await page.mouse.down();await page.mouse.move(center.x + 90, center.y + 60, { steps: 16 });await page.waitForTimeout(200);
   const pulled = await positions();assert.ok(pulled.some((value, index) => Math.abs(value - rest[index]) > 1), 'painted mesh deforms while dragging');
   await page.mouse.up();await page.waitForTimeout(150);
   const released = await positions();assert.ok(released.every(Number.isFinite));assert.notDeepEqual(released, pulled, 'release animates recoil');
   await page.screenshot({ path: path.join(root, 'test-results/interaction.png') });
   await ui('reset').click();await page.waitForTimeout(100);assert.deepEqual(await positions(), rest, 'reset restores the rest shape');
-  await panel.locator('[data-tool=brush]').click();await ui('clear').click();await page.waitForTimeout(100);await painted('grab', center, { x: center.x + 30, y: center.y });assert.match(await ui('status').textContent(), /先に/);
+  await control('[data-tool=brush]').click();await ui('clear').click();await page.waitForTimeout(100);await painted('grab', center, { x: center.x + 30, y: center.y });assert.match(await ui('status').textContent(), /先に/);
   assert.notEqual(await ui('panel').evaluate(el => getComputedStyle(el).getPropertyValue('--accent')), brushColor, 'grab has its own visible state color');
   await ui('select').click();assert.equal(await page.locator('#first').evaluate(el => el.style.opacity), '');
   await page.keyboard.press('Escape');await ui('hit').waitFor({ state: 'visible' });
   assert.equal(await page.locator('#first').evaluate(el => el.style.opacity), '0', 'canceling image change restores the existing effect');
-  await ui('material').locator('summary').click();await panel.locator('[data-material=soft]').click();assert.equal(await ui('softness').inputValue(), '75');
+  await ui('material').locator('summary').click();await control('[data-material=soft]').click();assert.equal(await ui('softness').inputValue(), '75');
   await ui('select').click();assert.equal(await page.locator('#first').evaluate(el => el.style.opacity), '', 'switching image restores the previous element');
   const requests = foreignRequests;await page.locator('#foreign').click();
   await page.waitForFunction(() => document.getElementById('foreign').style.opacity === '0', { timeout: 15000 });
   assert.match(await ui('status').textContent(), /取得しました/, 'cross-origin image uses real captureVisibleTab');
   assert.equal(foreignRequests, requests, 'extension does not re-download the image');
+  const exposure = await page.evaluate(() => {
+    const image = document.getElementById('foreign'), sample = document.createElement('canvas');
+    sample.width = 400;sample.height = 300;const ctx = sample.getContext('2d');ctx.drawImage(image, 0, 0);
+    let directRead;
+    try { ctx.getImageData(0, 0, 1, 1);directRead = 'allowed'; } catch (error) { directRead = error.name; }
+    const host = document.getElementById('nurupuru-anywhere');
+    const root = host.shadowRoot, canvas = root?.querySelector('canvas') || host.querySelector('canvas');
+    let screenshotPixel = null;
+    if (canvas) {
+      const g = canvas.getContext('webgl2'), unit = g.getParameter(g.ACTIVE_TEXTURE), previous = g.getParameter(g.FRAMEBUFFER_BINDING);
+      g.activeTexture(g.TEXTURE0);const texture = g.getParameter(g.TEXTURE_BINDING_2D), fb = g.createFramebuffer();
+      g.bindFramebuffer(g.FRAMEBUFFER, fb);g.framebufferTexture2D(g.FRAMEBUFFER, g.COLOR_ATTACHMENT0, g.TEXTURE_2D, texture, 0);
+      const pixel = new Uint8Array(4);g.readPixels(200, 150, 1, 1, g.RGBA, g.UNSIGNED_BYTE, pixel);screenshotPixel = [...pixel];
+      g.bindFramebuffer(g.FRAMEBUFFER, previous);g.deleteFramebuffer(fb);g.activeTexture(unit);
+    }
+    return {
+      directRead, rootAccessible: root !== null, screenshotPixel,
+      nativeRootAccessible: Object.getOwnPropertyDescriptor(Element.prototype, 'shadowRoot').get.call(host) !== null,
+      creationIntercepted: pageShadowRoots.length > 0,
+      internalEventsObserved: pageInternalEvents.length > 0, internalEventLeaked: pageInternalEvents.some(Boolean),
+      controllerVisible: typeof globalThis.__nurupuruAnywhere !== 'undefined', debugHookVisible: typeof globalThis.__nurupuruTestRoot !== 'undefined',
+    };
+  });
+  assert.deepEqual(exposure, {
+    directRead: 'SecurityError', rootAccessible: false, screenshotPixel: null, nativeRootAccessible: false, creationIntercepted: false,
+    internalEventsObserved: true, internalEventLeaked: false, controllerVisible: false, debugHookVisible: false,
+  }, 'page scripts cannot access captured cross-origin pixels through DOM, native getters, prototype interception, events or global handles');
   assert.equal(await ui('strength').inputValue(), '120');assert.equal(await ui('softness').inputValue(), '75', 'settings are shared across image selections');
-  assert.equal(await panel.locator('canvas').count(), 1, 'only one image renderer exists');
-  await ui('fill').click();await panel.locator('[data-tool=grab]').click();await page.screenshot({ path: path.join(root, 'test-results/panel.png') });
+  assert.equal(await control('canvas').count(), 1, 'only one image renderer exists');
+  await ui('fill').click();await control('[data-tool=grab]').click();await page.screenshot({ path: path.join(root, 'test-results/panel.png') });
   await page.evaluate(() => scrollBy(0, 120));await page.waitForTimeout(100);
   const tracked = await ui('hit').boundingBox(), imageBox = await page.locator('#foreign').boundingBox();assert.ok(Math.abs(tracked.y - imageBox.y) < 1, 'overlay follows scrolling');
   assert.equal(await ui('canvas').evaluate(el => getComputedStyle(el).position), 'absolute', 'effect is anchored in the document, not fixed to the screen');
@@ -107,31 +150,25 @@ try {
   await ui('select').click();await page.locator('#first').click();await ui('hit').waitFor({ state: 'visible' });
   await ui('close').click();assert.equal(await page.locator('#nurupuru-anywhere').count(), 0);assert.equal(await page.locator('#foreign').evaluate(el => el.style.opacity), '0.6', 'closing preserves the previously released image');
   assert.equal(await page.locator('#first').evaluate(el => el.style.opacity), '', 'closing also removes the current image effect');
-  await activate();await page.waitForSelector('#nurupuru-anywhere', { state: 'attached' });await ui('fold').click();await activate();
-  await page.waitForFunction(() => document.getElementById('nurupuru-anywhere').shadowRoot.getElementById('fold').getAttribute('aria-expanded') === 'true');
+  await activate();await page.waitForSelector('#nurupuru-anywhere', { state: 'attached' });await closed.refresh();await ui('fold').click();await activate();
+  await closed.waitFor(root => root.getElementById('fold').getAttribute('aria-expanded') === 'true');
   assert.equal(await page.locator('#nurupuru-anywhere').count(), 1, 'repeated toolbar activation does not duplicate controls');
-  await page.evaluate(() => {
-    document.getElementById('foreign').click();
-    document.getElementById('nurupuru-anywhere').shadowRoot.getElementById('release').click();
-  });
+  await closed.evaluate(root => { document.getElementById('foreign').click();root.getElementById('release').click(); });
   await page.waitForTimeout(700);
   assert.equal(await ui('panel').getAttribute('data-state'), 'idle', 'a canceled pending capture cannot reselect the image');
   assert.equal(await page.locator('#foreign').evaluate(el => el.style.opacity), '0.6');
   await ui('select').click();await page.evaluate(() => document.getElementById('foreign').click());
   await page.setViewportSize({ width: 1180, height: 900 });
-  await page.waitForFunction(() => /取得中/.test(document.getElementById('nurupuru-anywhere').shadowRoot.getElementById('status').textContent));
+  await closed.waitFor(root => /取得中/.test(root.getElementById('status').textContent));
   assert.equal(await ui('editing').isVisible(), false, 'a resized capture is rejected instead of applying misaligned pixels');
-  await page.evaluate(() => {
-    document.getElementById('foreign').click();
-    document.getElementById('nurupuru-anywhere').shadowRoot.getElementById('close').click();
-  });
+  await closed.evaluate(root => { document.getElementById('foreign').click();root.getElementById('close').click(); });
   await page.waitForTimeout(700);assert.equal(await panel.count(), 0, 'closing during capture cannot recreate the extension UI');
-  await activate();await page.waitForSelector('#nurupuru-anywhere', { state: 'attached' });
+  await activate();await page.waitForSelector('#nurupuru-anywhere', { state: 'attached' });await closed.refresh();
   await page.locator('#first').click();await ui('hit').waitFor({ state: 'visible' });
   await page.locator('#first').evaluate(el => el.remove());
-  await page.waitForFunction(() => document.getElementById('nurupuru-anywhere').shadowRoot.getElementById('panel').dataset.state === 'idle');
+  await closed.waitFor(root => root.getElementById('panel').dataset.state === 'idle');
   assert.equal(await ui('editing').isVisible(), false, 'removing the selected source releases its effect');
   await ui('close').click();
   assert.deepEqual(errors, []);
-  console.log('PASS: unpacked extension, CSP, direct/captured images, mask/physics, shared settings, positioning, OFF/style restoration, canceled captures, viewport changes and teardown');
+  console.log('PASS: unpacked extension, page-world screenshot isolation, CSP, direct/captured images, mask/physics, shared settings, positioning, OFF/style restoration, canceled captures, viewport changes and teardown');
 } finally { await context.close();await new Promise(resolve => server.close(resolve));await new Promise(resolve => foreign.close(resolve)); }

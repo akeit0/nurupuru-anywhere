@@ -18,6 +18,10 @@ function position(value, free) {
   if (value === 'center') return free / 2;
   return parseFloat(value) || 0;
 }
+function captureViewport() {
+  const v = visualViewport;
+  return { width: v?.width || innerWidth, height: v?.height || innerHeight, left: v?.offsetLeft || 0, top: v?.offsetTop || 0, ratio: (devicePixelRatio || 1) * (v?.scale || 1) };
+}
 export async function readSource(image, host) {
   if (!image.complete) await image.decode();
   const rect = imageRect(image), style = getComputedStyle(image);
@@ -43,11 +47,11 @@ export async function readSource(image, host) {
   }
   // Cross-origin pixels may be protected. Capture the displayed appearance
   // using activeTab, without re-requesting the original image URL.
-  const left = Math.max(0, rect.left), top = Math.max(0, rect.top);
-  const width = Math.min(innerWidth, rect.left + rect.width) - left, height = Math.min(innerHeight, rect.top + rect.height) - top;
+  const viewport = captureViewport();
+  const left = Math.max(viewport.left, rect.left), top = Math.max(viewport.top, rect.top);
+  const width = Math.min(viewport.left + viewport.width, rect.left + rect.width) - left, height = Math.min(viewport.top + viewport.height, rect.top + rect.height) - top;
   if (width < 8 || height < 8) throw Error(t('bringIntoView'));
   let reply;
-  const viewport = { width: innerWidth, height: innerHeight };
   host.style.setProperty('visibility', 'hidden', 'important');
   try {
     await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
@@ -57,9 +61,17 @@ export async function readSource(image, host) {
   const bitmap = await createImageBitmap(await (await fetch(reply.dataUrl)).blob());
   try {
     const after = imageRect(image);
-    if (innerWidth !== viewport.width || innerHeight !== viewport.height || (image.currentSrc || image.src) !== sourceUrl || ['left', 'top', 'width', 'height'].some(key => Math.abs(after[key] - rect[key]) > 1)) throw Error(t('captureChanged'));
-    const crop = surface(width, height), ctx = crop.getContext('2d');
-    ctx.drawImage(bitmap, left * bitmap.width / viewport.width, top * bitmap.height / viewport.height, width * bitmap.width / viewport.width, height * bitmap.height / viewport.height, 0, 0, crop.width, crop.height);
-    return { image: crop, rect, capture: true, slice: { x: (left - rect.left) / rect.width, y: (top - rect.top) / rect.height, w: width / rect.width, h: height / rect.height } };
+    const current = captureViewport();
+    if (Object.keys(viewport).some(key => current[key] !== viewport[key]) || (image.currentSrc || image.src) !== sourceUrl || ['left', 'top', 'width', 'height'].some(key => Math.abs(after[key] - rect[key]) > 1)) throw Error(t('captureChanged'));
+    // Use the display's pixel ratio, not bitmap.width / innerWidth: the latter
+    // mixes rounded CSS dimensions and scrollbar pixels at fractional zoom.
+    const scale = viewport.ratio;
+    const x = Math.max(0, Math.floor((left - viewport.left) * scale)), y = Math.max(0, Math.floor((top - viewport.top) * scale));
+    const right = Math.min(bitmap.width, Math.ceil((left + width - viewport.left) * scale)), bottom = Math.min(bitmap.height, Math.ceil((top + height - viewport.top) * scale));
+    // Copy whole captured pixels once. Preserve their bounds when positioning the
+    // mesh rather than resampling the screenshot into the image's fractional box.
+    const crop = document.createElement('canvas');crop.width = right - x;crop.height = bottom - y;
+    crop.getContext('2d').drawImage(bitmap, x, y, crop.width, crop.height, 0, 0, crop.width, crop.height);
+    return { image: crop, rect, capture: true, slice: { x: (viewport.left + x / scale - rect.left) / rect.width, y: (viewport.top + y / scale - rect.top) / rect.height, w: crop.width / scale / rect.width, h: crop.height / scale / rect.height } };
   } finally { bitmap.close(); }
 }

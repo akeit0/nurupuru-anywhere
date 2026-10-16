@@ -181,12 +181,17 @@ function start() {
     // The effect lives at the image's document coordinates, with room for the
     // surface to deform. It must not introduce horizontal/vertical page overflow.
     const padding = Math.min(160, Math.min(rect.width, rect.height) * .4);
-    const left = Math.max(0, rect.left + scrollX - padding), top = Math.max(0, rect.top + scrollY - padding);
-    const right = Math.min(document.documentElement.clientWidth, rect.left + scrollX + rect.width + padding);
-    const bottom = Math.min(Math.max(innerHeight, document.body.scrollHeight + document.body.getBoundingClientRect().top + scrollY), rect.top + scrollY + rect.height + padding);
-    const width = Math.max(1, right - left), height = Math.max(1, bottom - top);
+    const ratio = (devicePixelRatio || 1) * (visualViewport?.scale || 1);
+    const vx = scrollX + (visualViewport?.offsetLeft || 0), vy = scrollY + (visualViewport?.offsetTop || 0);
+    // Align the canvas to screen pixels too; a fractional CSS origin or backing
+    // size would filter the already captured pixels again during compositing.
+    const left = Math.ceil((Math.max(0, rect.left + scrollX - padding) - vx) * ratio) / ratio + vx;
+    const top = Math.ceil((Math.max(0, rect.top + scrollY - padding) - vy) * ratio) / ratio + vy;
+    const right = Math.floor((Math.min(document.documentElement.clientWidth, rect.left + scrollX + rect.width + padding) - vx) * ratio) / ratio + vx;
+    const bottom = Math.floor((Math.min(Math.max(innerHeight, document.body.scrollHeight + document.body.getBoundingClientRect().top + scrollY), rect.top + scrollY + rect.height + padding) - vy) * ratio) / ratio + vy;
+    const w = Math.max(1, Math.round((right - left) * ratio)), h = Math.max(1, Math.round((bottom - top) * ratio));
+    const width = w / ratio, height = h / ratio;
     Object.assign(canvas.style, { left: left + 'px', top: top + 'px', width: width + 'px', height: height + 'px' });
-    const ratio = Math.min(devicePixelRatio || 1, 2), w = Math.round(width * ratio), h = Math.round(height * ratio);
     if (canvas.width !== w || canvas.height !== h) { canvas.width = w;canvas.height = h; }
     if (e.mesh.moving || e.mesh.gripState) {
       accumulator = Math.min(accumulator + (lastTime ? (now - lastTime) / 1000 : 1 / 60), 1 / 15);

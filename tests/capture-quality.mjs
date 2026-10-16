@@ -44,6 +44,7 @@ try {
       await ui('hit').waitFor({ state: 'visible' });
       assert.equal(await ui('status').textContent(), await worker.evaluate(() => chrome.i18n.getMessage('captured')), 'the test must exercise the capture fallback');
       await control('[data-tool=grab]').evaluate(el => el.click());
+      await page.mouse.move(20, 800);
       await page.waitForTimeout(100);
       const after = await page.screenshot();
       // Compare the final composited result to the original page, including text

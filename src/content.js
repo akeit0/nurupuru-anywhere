@@ -14,7 +14,7 @@ else start();
 function start() {
   const params = { ...DEFAULT_PARAMS, maskOpacity: 50, grabRadius: 110 };
   let tool = 'brush', effect = null, selecting = true, loading = false, generation = 0, stopped = false, enabled = true;
-  let raf = 0, lastTime = 0, accumulator = 0, gesture = null;
+  let raf = 0, lastTime = 0, accumulator = 0, gesture = null, cursorPoint = null;
   const { host, root, $, canvas, hit, highlight, dispose: disposePanel } = createPanel();
   let renderer;
   let message = '';
@@ -26,6 +26,18 @@ function start() {
   }
   function locate(node, rect) {
     Object.assign(node.style, { left: rect.left + scrollX + 'px', top: rect.top + scrollY + 'px', width: rect.width + 'px', height: rect.height + 'px' });
+  }
+  function updateCursor(rect = effect ? rectFor() : null) {
+    const cursor = $('cursor'), activeTool = gesture?.tool || tool;
+    const inside = rect && cursorPoint && cursorPoint.x >= rect.left && cursorPoint.x <= rect.left + rect.width && cursorPoint.y >= rect.top && cursorPoint.y <= rect.top + rect.height;
+    cursor.hidden = !enabled || selecting || loading || !effect || !cursorPoint || document.hidden || (!gesture && !inside) || (activeTool === 'grab' && !$('showGrabRange').checked);
+    if (cursor.hidden) return;
+    const diameter = activeTool === 'grab' ? params.grabRadius * 2 : params.brushSize;
+    cursor.dataset.mode = activeTool;
+    Object.assign(cursor.firstElementChild.style, { left: cursorPoint.x + 'px', top: cursorPoint.y + 'px', width: diameter + 'px', height: diameter + 'px' });
+  }
+  function trackCursor(event) {
+    cursorPoint = event.pointerType === 'touch' ? null : { x: event.clientX, y: event.clientY };updateCursor();
   }
   function setOriginalHidden(hidden) {
     if (!effect || hidden === effect.concealed) return;
@@ -89,6 +101,7 @@ function start() {
     hit.hidden = !active;canvas.style.visibility = active ? '' : 'hidden';
     notice(message);
     hit.style.cursor = tool === 'grab' ? 'grab' : 'crosshair';
+    updateCursor();
   }
   function setTool(next) {
     finishGesture();tool = next;updateControls();requestFrame();
@@ -140,11 +153,13 @@ function start() {
     const ended = gesture;gesture = null;
     if (ended.tool === 'grab') effect?.mesh.endGrab();
     if (hit.hasPointerCapture(ended.id)) hit.releasePointerCapture(ended.id);
-    flushMask();requestFrame();
+    flushMask();updateCursor();requestFrame();
   }
+  hit.addEventListener('pointerenter', trackCursor);
+  hit.addEventListener('pointerleave', () => { if (!gesture) { cursorPoint = null;updateCursor(); } });
   hit.addEventListener('pointerdown', event => {
     if (!enabled || selecting || loading || !effect || gesture || (event.button !== 0 && event.button !== 2)) return;
-    event.preventDefault();event.stopPropagation();
+    event.preventDefault();event.stopPropagation();trackCursor(event);
     const p = point(event), active = event.button === 2 && tool === 'brush' ? 'erase' : tool;
     flushMask();
     if (active === 'grab') {
@@ -153,10 +168,12 @@ function start() {
       if (!effect.mesh.beginGrab(p.x, p.y, 'grab', grabParams)) { notice(t('paintFirst'));return; }
     }
     gesture = { id: event.pointerId, tool: active, start: p, last: p };hit.setPointerCapture(event.pointerId);
+    updateCursor();
     if (active !== 'grab') paint(p, p);
     requestFrame();
   });
   hit.addEventListener('pointermove', event => {
+    trackCursor(event);
     if (!effect || !gesture || gesture.id !== event.pointerId) return;
     event.preventDefault();const p = point(event);
     if (gesture.tool === 'grab') effect.mesh.grab(gesture.start.x, gesture.start.y, p.x, p.y);
@@ -171,6 +188,7 @@ function start() {
     raf = 0;
     if (!effect || document.hidden || stopped || !enabled || selecting || loading) return;
     const e = effect, rect = rectFor(), original = imageRect(e.target), initial = e.source.rect;
+    updateCursor(rect);
     if (!e.target.isConnected || (e.source.capture && (Math.abs(original.width - initial.width) > 1 || Math.abs(original.height - initial.height) > 1)) || Math.abs(rect.width / rect.height - e.mesh.w / e.mesh.h) > .02) {
       releaseImage();notice(t('sizeChanged'));return;
     }
@@ -216,7 +234,7 @@ function start() {
     event.preventDefault();event.stopImmediatePropagation();void selectImage(image);
   }
   function keyDown(event) {
-    const input = 'input:not([type="range"]),textarea,[contenteditable],select';
+    const input = 'input:not([type="range"]):not([type="checkbox"]),textarea,[contenteditable],select';
     if (!enabled || loading || event.repeat || event.defaultPrevented || event.ctrlKey || event.metaKey || event.altKey || event.isComposing || root.activeElement?.matches(input) || event.composedPath().some(node => node.matches?.(input))) return;
     if (event.key === 'Escape') {
       finishGesture();if (selecting) cancelSelection();return;
@@ -242,10 +260,11 @@ function start() {
     for (const [id, key] of Object.entries(PARAM_FIELDS)) { $(id).value = params[key];$(id + 'Value').textContent = params[key] + (id === 'size' || id === 'grabRadius' ? ' px' : ''); }
   }
   for (const [id, key] of Object.entries(PARAM_FIELDS)) $(id).oninput = () => {
-    params[key] = Number($(id).value);syncParamControls();
+    params[key] = Number($(id).value);syncParamControls();updateCursor();
     if (Object.hasOwn(MATERIAL_PRESETS.jelly, key)) for (const button of root.querySelectorAll('[data-material]')) button.setAttribute('aria-pressed', 'false');
     if (effect) { effect.mesh.moving = true;requestFrame(); }
   };
+  $('showGrabRange').onchange = () => updateCursor();
   for (const button of root.querySelectorAll('[data-material]')) button.onclick = () => {
     Object.assign(params, MATERIAL_PRESETS[button.dataset.material]);
     syncParamControls();
@@ -255,16 +274,17 @@ function start() {
   $('fill').onclick = () => { if (!effect) return;effect.ctx.fillStyle = 'rgb(' + params.brushStrength + ',255,0)';effect.ctx.fillRect(0, 0, effect.mask.width, effect.mask.height);effect.dirty = true;requestFrame(); };
   $('clear').onclick = () => { if (!effect) return;effect.ctx.fillStyle = 'black';effect.ctx.fillRect(0, 0, effect.mask.width, effect.mask.height);effect.mesh.reset();effect.dirty = true;requestFrame(); };
   $('reset').onclick = () => { effect?.mesh.reset();requestFrame(); };
-  function visibility() { lastTime = accumulator = 0;if (document.hidden) finishGesture();else requestFrame(); }
+  function blur() { cursorPoint = null;finishGesture();updateCursor(); }
+  function visibility() { lastTime = accumulator = 0;if (document.hidden) blur();else requestFrame(); }
   function cleanup() {
     stopped = true;generation++;releaseImage();if (raf) cancelAnimationFrame(raf);pageObserver.disconnect();imageObserver.disconnect();
     document.removeEventListener('pointermove', pointerOver, true);document.removeEventListener('click', pickImage, true);document.removeEventListener('keydown', keyDown, true);
-    window.removeEventListener('scroll', requestFrame, true);window.removeEventListener('resize', requestFrame);window.removeEventListener('blur', finishGesture);document.removeEventListener('visibilitychange', visibility);
+    window.removeEventListener('scroll', requestFrame, true);window.removeEventListener('resize', requestFrame);window.removeEventListener('blur', blur);document.removeEventListener('visibilitychange', visibility);
     disposePanel();host.remove();delete globalThis.__nurupuruAnywhere;
   }
   $('close').onclick = cleanup;
   document.addEventListener('pointermove', pointerOver, true);document.addEventListener('click', pickImage, true);document.addEventListener('keydown', keyDown, true);
-  window.addEventListener('scroll', requestFrame, true);window.addEventListener('resize', requestFrame);window.addEventListener('blur', finishGesture);document.addEventListener('visibilitychange', visibility);
+  window.addEventListener('scroll', requestFrame, true);window.addEventListener('resize', requestFrame);window.addEventListener('blur', blur);document.addEventListener('visibilitychange', visibility);
   globalThis.__nurupuruAnywhere = { wake() { setFolded(false);if (!effect && enabled && !loading && !selecting) chooseImage(); } };
   highlight.hidden = true;syncParamControls();notice(t('pickHint'));updateControls();
 }

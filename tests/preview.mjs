@@ -31,6 +31,8 @@ try {
     await state('grab');assert.equal(await control('#grab').isVisible(), true);assert.equal(await control('#brush').isVisible(), false);
     assert.equal(await ui('reset').isVisible(), true);assert.equal(await ui('grabGuide').isVisible(), false);
     assert.equal(await ui('grabRadius').isVisible(), true);
+    assert.equal(await ui('showGrabRange').isVisible(), true);
+    assert.equal(await ui('showGrabRange').evaluate(el => el.parentElement.textContent.trim()), english ? 'Show cursor range' : 'カーソルの範囲を表示');
     assert.equal(await ui('grabRadius').evaluate(el => el.closest('label').firstChild.textContent.trim()), english ? 'Grab radius' : 'つかむ範囲');
     await page.screenshot({ path: fileURLToPath(new URL('../test-results/preview-grab.png', import.meta.url)) });
     await state('off');assert.equal(await control('[data-tool=brush]').isDisabled(), true);

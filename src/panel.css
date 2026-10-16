@@ -6,6 +6,8 @@ header{display:flex;align-items:center;gap:8px;margin-bottom:12px}strong{flex:no
 button{font:inherit;color:inherit;background:#252d38;border:1px solid #414c5b;border-radius:7px;padding:7px 10px;cursor:pointer;white-space:nowrap;line-height:1.4}button:hover:not(:disabled){background:#333f4d;border-color:#758397}button:disabled{opacity:.4;cursor:default}button:focus-visible,summary:focus-visible,input:focus-visible{outline:2px solid var(--accent);outline-offset:3px}
 .image-controls{display:flex;align-items:center;gap:8px}
 .key{font-size:10px;opacity:.6}
+#cursor{position:fixed;inset:0;overflow:hidden;pointer-events:none}#cursor>div{position:absolute;transform:translate(-50%,-50%);border:1px solid #fff;border-radius:50%;box-shadow:0 0 0 1px #0009}#cursor[data-mode=grab]>div{border-style:dashed}
+#grab .check{margin-top:6px;font-size:11px;gap:6px}.check input{margin:0;accent-color:var(--accent)}
 #panelHandle{display:flex;align-items:center;gap:8px;flex:1;min-width:0;cursor:grab;touch-action:none;user-select:none}#panelHandle.dragging{cursor:grabbing}
 .image-controls button{font-size:11px;padding:5px 7px}#enabled[aria-pressed=true]{color:#96e8c1;border-color:#568d76;background:#244034}#enabled[aria-pressed=false]{background:#353b44;color:#c9d0da;border-color:#606976}#release{background:transparent;color:#bac3cf;border-color:#667181}#release:hover{color:#ffbcc1;border-color:#e8909b;background:#5c2d3633}
 .tool-labels{font-size:11px;color:#b6c1cf;font-weight:600}

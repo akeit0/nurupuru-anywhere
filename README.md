@@ -27,6 +27,7 @@ Updates are manual: replace the contents of that folder with the new ZIP's conte
 4. Use **Grab** to pull a painted area, then release it.
 
 Under **Material**, choose a preset or adjust softness, return speed, and damping.
+The circle around the pointer previews the brush size or grab radius. Under **Grab**, turn off **Show cursor range** to hide the grab circle.
 Brush and material settings carry over when you select another image. Settings are not saved per image.
 
 | Control | Action |

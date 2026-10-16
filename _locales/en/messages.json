@@ -21,6 +21,7 @@
   "grab": { "message": "Grab" },
   "size": { "message": "Size" },
   "grabRadius": { "message": "Grab radius" },
+  "showGrabRange": { "message": "Show cursor range" },
   "mobility": { "message": "Mobility" },
   "fill": { "message": "Paint all" },
   "clear": { "message": "Clear mask" },

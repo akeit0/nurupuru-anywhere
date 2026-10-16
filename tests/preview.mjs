@@ -19,12 +19,23 @@ try {
       await closed.waitFor((root, expected) => root.getElementById('panel').dataset.state === expected, expected);
       assert.equal(await panel.getAttribute('data-state'), expected);
     }
+    async function assertToolLayoutStable() {
+      let initial;
+      for (const tool of ['brush', 'erase', 'grab']) {
+        await state(tool);
+        const bounds = await panel.boundingBox(), tools = await ui('tools').boundingBox(), material = await ui('material').boundingBox();
+        const current = [bounds.y, bounds.height, tools.y, material.y];
+        if (initial) assert.ok(current.every((value, i) => Math.abs(value - initial[i]) < .1), `switching to ${tool} preserves panel height and control positions: ${current} vs ${initial}`);
+        else initial = current;
+      }
+    }
     assert.equal(await panel.getAttribute('lang'), english ? 'en' : 'ja');
     await state('idle');assert.equal(await control('#selectLabel').textContent(), english ? 'Select image' : '画像を選ぶ');
     assert.equal(await control('#stateLabel,#targetName').count(), 0, 'image selection status is integrated into the selection button');
     await state('selecting');assert.equal(await control('#selectLabel').textContent(), english ? 'Selecting image' : '画像を選択中');
     await page.screenshot({ path: fileURLToPath(new URL('../test-results/preview-selecting.png', import.meta.url)) });
     await state('brush');assert.equal(await control('#brush').isVisible(), true);
+    await assertToolLayoutStable();await state('brush');
     await control('#material').evaluate(el => el.open = true);
     await page.screenshot({ path: fileURLToPath(new URL('../test-results/preview-brush.png', import.meta.url)) });
     await state('erase');assert.equal(await control('#strengthRow').isVisible(), false);
@@ -51,6 +62,7 @@ try {
     assert.equal(await panel.evaluate(el => el.scrollWidth <= el.clientWidth), true, 'translated grab controls fit the narrow panel');
     assert.ok(await ui('grabRadius').evaluate(el => el.getBoundingClientRect().width >= 80), 'grab radius slider remains usable in the narrow layout');
     await page.screenshot({ path: fileURLToPath(new URL('../test-results/preview-' + locale + '-grab-radius.png', import.meta.url)) });
+    await assertToolLayoutStable();
     if (english) {
       const labels = await panel.evaluate(el => { const copy = el.cloneNode(true);copy.querySelector('#selectHint').remove();return copy.textContent; });
       assert.doesNotMatch(labels, /[ぁ-んァ-ヶ一-龠]/, 'English controls contain no untranslated Japanese; image alt text is kept as supplied by the page');

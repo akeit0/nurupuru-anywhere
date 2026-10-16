@@ -6,6 +6,8 @@ header{display:flex;align-items:center;gap:8px;margin-bottom:12px}strong{flex:no
 button{font:inherit;color:inherit;background:#252d38;border:1px solid #414c5b;border-radius:7px;padding:7px 10px;cursor:pointer;white-space:nowrap;line-height:1.4}button:hover:not(:disabled){background:#333f4d;border-color:#758397}button:disabled{opacity:.4;cursor:default}button:focus-visible,summary:focus-visible,input:focus-visible{outline:2px solid var(--accent);outline-offset:3px}
 .image-controls{display:flex;align-items:center;gap:8px}
 .key{font-size:10px;opacity:.6}
+#toolSettings{display:grid;align-items:start}#toolSettings>div{grid-area:1/1;min-width:0}#toolSettings>div[hidden]{display:block!important;visibility:hidden;pointer-events:none}#strengthRow[hidden]{display:flex!important;visibility:hidden;pointer-events:none}
+.tool-labels{height:20px;align-items:center}
 #cursor{position:fixed;inset:0;overflow:hidden;pointer-events:none}#cursor>div{position:absolute;transform:translate(-50%,-50%);border:1px solid #fff;border-radius:50%;box-shadow:0 0 0 1px #0009}#cursor[data-mode=grab]>div{border-style:dashed}
 #grab .check{margin-top:6px;font-size:11px;gap:6px}.check input{margin:0;accent-color:var(--accent)}
 #panelHandle{display:flex;align-items:center;gap:8px;flex:1;min-width:0;cursor:grab;touch-action:none;user-select:none}#panelHandle.dragging{cursor:grabbing}

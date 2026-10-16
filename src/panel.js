@@ -48,6 +48,7 @@ export function createPanel() {
       <fieldset id="editing" hidden>
       <div class="tool-labels"><span>${t('paintGuide')}</span><span id="grabGuide">${t('grabGuide')}</span><button id="reset" hidden>${t('reset')}</button></div>
       <div id="tools" role="group" aria-label="${t('tools')}"><button data-tool="brush" aria-pressed="true">${t('brush')} <small>B</small></button><button data-tool="erase" aria-pressed="false">${t('erase')} <small>E</small></button><button data-tool="grab" aria-pressed="false">${t('grab')} <small>G</small></button></div>
+      <div id="toolSettings">
       <div id="brush">
         <label>${t('size')} <input id="size" type="range" min="8" max="240" value="68"><output id="sizeValue">68 px</output></label>
         <label id="strengthRow">${t('mobility')} <input id="strength" type="range" min="0" max="255" value="255"><output id="strengthValue">255</output></label>
@@ -56,6 +57,7 @@ export function createPanel() {
       <div id="grab">
         <label>${t('grabRadius')} <input id="grabRadius" type="range" min="20" max="300" value="110"><output id="grabRadiusValue">110 px</output></label>
         <label class="check"><input id="showGrabRange" type="checkbox" checked>${t('showGrabRange')}</label>
+      </div>
       </div>
       <details id="material"><summary>${t('material')}</summary>
         <div class="presets" role="group" aria-label="${t('materialPresets')}"><button data-material="rubber">${t('firm')}</button><button data-material="jelly" aria-pressed="true">${t('standard')}</button><button data-material="soft">${t('soft')}</button></div>

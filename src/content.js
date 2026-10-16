@@ -93,6 +93,7 @@ function start() {
     $('editing').disabled = !enabled || selecting || loading;
     $('brush').hidden = tool === 'grab';
     $('grab').hidden = tool !== 'grab';
+    $('brush').inert = tool === 'grab';$('grab').inert = tool !== 'grab';
     $('reset').hidden = tool !== 'grab';$('grabGuide').hidden = tool === 'grab';
     $('strengthRow').hidden = tool !== 'brush';
     for (const button of root.querySelectorAll('[data-tool]')) button.setAttribute('aria-pressed', String(button.dataset.tool === tool));

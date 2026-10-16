@@ -5,14 +5,14 @@ import { DEFAULT_PARAMS, MATERIAL_PRESETS } from './core/settings.js';
 import { readSource, imageRect } from './source-image.js';
 import { createPanel } from './panel.js';
 
-const PARAM_FIELDS = { size: 'brushSize', strength: 'brushStrength', softness: 'softness', returnSpeed: 'returnSpeed', damping: 'damping' };
+const PARAM_FIELDS = { size: 'brushSize', strength: 'brushStrength', grabRadius: 'grabRadius', softness: 'softness', returnSpeed: 'returnSpeed', damping: 'damping' };
 const TOOL_KEYS = { b: 'brush', e: 'erase', g: 'grab' };
 
 if (globalThis.__nurupuruAnywhere) globalThis.__nurupuruAnywhere.wake();
 else start();
 
 function start() {
-  const params = { ...DEFAULT_PARAMS, maskOpacity: 50, grabRadius: 240 };
+  const params = { ...DEFAULT_PARAMS, maskOpacity: 50, grabRadius: 110 };
   let tool = 'brush', effect = null, selecting = true, loading = false, generation = 0, stopped = false, enabled = true;
   let raf = 0, lastTime = 0, accumulator = 0, gesture = null;
   const { host, root, $, canvas, hit, highlight } = createPanel();
@@ -146,8 +146,9 @@ function start() {
     const p = point(event), active = event.button === 2 && tool === 'brush' ? 'erase' : tool;
     flushMask();
     if (active === 'grab') {
-      params.grabRadius = Math.min(720, 110 / p.zoom / effect.mesh.scale * 720);
-      if (!effect.mesh.beginGrab(p.x, p.y, 'grab', params)) { notice(t('paintFirst'));return; }
+      // The slider uses screen pixels; the solver measures radius in image units.
+      const grabParams = { ...params, grabRadius: params.grabRadius / p.zoom / effect.mesh.scale * 720 };
+      if (!effect.mesh.beginGrab(p.x, p.y, 'grab', grabParams)) { notice(t('paintFirst'));return; }
     }
     gesture = { id: event.pointerId, tool: active, start: p, last: p };hit.setPointerCapture(event.pointerId);
     if (active !== 'grab') paint(p, p);
@@ -229,7 +230,7 @@ function start() {
   };
   for (const button of root.querySelectorAll('[data-tool]')) button.onclick = () => setTool(button.dataset.tool);
   function syncParamControls() {
-    for (const [id, key] of Object.entries(PARAM_FIELDS)) { $(id).value = params[key];$(id + 'Value').textContent = params[key] + (id === 'size' ? ' px' : ''); }
+    for (const [id, key] of Object.entries(PARAM_FIELDS)) { $(id).value = params[key];$(id + 'Value').textContent = params[key] + (id === 'size' || id === 'grabRadius' ? ' px' : ''); }
   }
   for (const [id, key] of Object.entries(PARAM_FIELDS)) $(id).oninput = () => {
     params[key] = Number($(id).value);syncParamControls();

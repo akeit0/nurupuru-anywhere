@@ -18,7 +18,10 @@ export function createPanel() {
         <label id="strengthRow">${t('mobility')} <input id="strength" type="range" min="0" max="255" value="255"><output id="strengthValue">255</output></label>
         <div class="actions"><button id="fill">${t('fill')}</button><button id="clear">${t('clear')}</button></div>
       </div>
-      <div id="grab"><span>${t('dragHint')}</span><button id="reset">${t('reset')}</button></div>
+      <div id="grab">
+        <label>${t('grabRadius')} <input id="grabRadius" type="range" min="20" max="300" value="110"><output id="grabRadiusValue">110 px</output></label>
+        <div class="grab-actions"><span>${t('dragHint')}</span><button id="reset">${t('reset')}</button></div>
+      </div>
       <details id="material"><summary>${t('material')}</summary>
         <div class="presets" role="group" aria-label="${t('materialPresets')}"><button data-material="rubber">${t('firm')}</button><button data-material="jelly" aria-pressed="true">${t('standard')}</button><button data-material="soft">${t('soft')}</button></div>
         <label>${t('softness')} <input id="softness" type="range" min="0" max="100"><output id="softnessValue"></output></label>

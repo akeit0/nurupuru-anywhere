@@ -29,6 +29,8 @@ try {
     await page.screenshot({ path: fileURLToPath(new URL('../test-results/preview-brush.png', import.meta.url)) });
     await state('erase');assert.equal(await control('#strengthRow').isVisible(), false);
     await state('grab');assert.equal(await control('#grab').isVisible(), true);assert.equal(await control('#brush').isVisible(), false);
+    assert.equal(await ui('grabRadius').isVisible(), true);
+    assert.equal(await ui('grabRadius').evaluate(el => el.closest('label').firstChild.textContent.trim()), english ? 'Grab radius' : 'つかむ範囲');
     await page.screenshot({ path: fileURLToPath(new URL('../test-results/preview-grab.png', import.meta.url)) });
     await state('off');assert.equal(await control('[data-tool=brush]').isDisabled(), true);
     await state('folded', 'grab');assert.equal(await control('#detail').isVisible(), false);assert.equal(await control('#release').isVisible(), true);
@@ -44,6 +46,8 @@ try {
     assert.equal(await control('#size').evaluate(el => el.getBoundingClientRect().width >= 80), true, 'translated labels leave enough room for sliders');
     await state('grab');
     assert.equal(await panel.evaluate(el => el.scrollWidth <= el.clientWidth), true, 'translated grab controls fit the narrow panel');
+    assert.ok(await ui('grabRadius').evaluate(el => el.getBoundingClientRect().width >= 80), 'grab radius slider remains usable in the narrow layout');
+    await page.screenshot({ path: fileURLToPath(new URL('../test-results/preview-' + locale + '-grab-radius.png', import.meta.url)) });
     if (english) {
       const labels = await panel.evaluate(el => { const copy = el.cloneNode(true);copy.querySelector('#selectHint').remove();return copy.textContent; });
       assert.doesNotMatch(labels, /[ぁ-んァ-ヶ一-龠]/, 'English controls contain no untranslated Japanese; image alt text is kept as supplied by the page');

@@ -89,6 +89,8 @@ try {
   const rest = await positions();assert.ok(rest.length > 1000 && rest.every(Number.isFinite));
   await painted('grab', center, { x: center.x + 50, y: center.y });
   assert.equal(await ui('status').textContent(), t('paintFirst'));assert.deepEqual(await positions(), rest, 'an empty mask cannot be grabbed');
+  assert.equal(await ui('grabRadius').inputValue(), '110');
+  assert.equal(await ui('grabRadiusValue').textContent(), '110 px');
   const unpainted = await pixel(center);
   await ui('strength').evaluate(el => { el.value = '120';el.dispatchEvent(new Event('input')); });
   await control('[data-tool=brush]').click();await ui('strength').focus();await page.keyboard.press('g');
@@ -107,6 +109,26 @@ try {
   await ui('reset').click();await page.waitForTimeout(100);assert.deepEqual(await positions(), rest, 'reset restores the rest shape');
   await control('[data-tool=brush]').click();await ui('clear').click();await page.waitForTimeout(100);await painted('grab', center, { x: center.x + 30, y: center.y });assert.equal(await ui('status').textContent(), t('paintFirst'));
   assert.notEqual(await ui('panel').evaluate(el => getComputedStyle(el).getPropertyValue('--accent')), brushColor, 'grab has its own visible state color');
+  await control('[data-tool=brush]').click();
+  await ui('strength').evaluate(el => { el.value = '255';el.dispatchEvent(new Event('input')); });
+  await ui('fill').click();await control('[data-tool=grab]').click();
+  async function pullWithRadius(radius) {
+    await ui('reset').click();await page.waitForTimeout(100);
+    await ui('grabRadius').evaluate((el, value) => { el.value = value;el.dispatchEvent(new Event('input')); }, String(radius));
+    assert.equal(await ui('grabRadiusValue').textContent(), radius + ' px');
+    await page.mouse.move(center.x, center.y);await page.mouse.down();await page.mouse.move(center.x + 60, center.y, { steps: 12 });await page.waitForTimeout(200);
+    const moved = await positions();await page.mouse.up();
+    let sum = 0, count = 0;
+    for (let i = 0; i < rest.length; i += 2) {
+      const distance = Math.hypot(rest[i] - 200, rest[i + 1] - 150);
+      if (distance >= 80 && distance <= 130) { sum += Math.hypot(moved[i] - rest[i], moved[i + 1] - rest[i + 1]);count++; }
+    }
+    return sum / count;
+  }
+  const narrowPull = await pullWithRadius(35), widePull = await pullWithRadius(180);
+  assert.ok(widePull > narrowPull * 1.5, `a wider grab radius moves more distant vertices: ${narrowPull} vs ${widePull}`);
+  await ui('reset').click();await control('[data-tool=brush]').click();await ui('clear').click();await control('[data-tool=grab]').click();
+  await ui('strength').evaluate(el => { el.value = '120';el.dispatchEvent(new Event('input')); });
   await ui('select').click();assert.equal(await page.locator('#first').evaluate(el => el.style.opacity), '');
   await page.keyboard.press('Escape');await ui('hit').waitFor({ state: 'visible' });
   assert.equal(await page.locator('#first').evaluate(el => el.style.opacity), '0', 'canceling image change restores the existing effect');
@@ -144,6 +166,7 @@ try {
     internalEventsObserved: true, internalEventLeaked: false, controllerVisible: false, debugHookVisible: false,
   }, 'page scripts cannot access captured cross-origin pixels through DOM, native getters, prototype interception, events or global handles');
   assert.equal(await ui('strength').inputValue(), '120');assert.equal(await ui('softness').inputValue(), '75', 'settings are shared across image selections');
+  assert.equal(await ui('grabRadius').inputValue(), '180', 'grab radius is preserved when changing images');
   assert.equal(await control('canvas').count(), 1, 'only one image renderer exists');
   await ui('fill').click();await control('[data-tool=grab]').click();await page.screenshot({ path: path.join(root, 'test-results/panel.png') });
   await page.evaluate(() => scrollBy(0, 120));await page.waitForTimeout(100);
@@ -160,6 +183,7 @@ try {
   assert.equal(await page.locator('#foreign').evaluate(el => el.style.getPropertyPriority('opacity')), 'important');
   assert.equal(await ui('editing').isVisible(), false);assert.equal(await ui('panel').getAttribute('data-state'), 'idle');
   assert.equal(await ui('select').textContent(), t('selectImage'));assert.equal(await ui('softness').inputValue(), '75', 'release preserves shared settings');
+  assert.equal(await ui('grabRadius').inputValue(), '180', 'release preserves the grab radius');
   await ui('select').click();await page.locator('#first').click();await ui('hit').waitFor({ state: 'visible' });
   await ui('close').click();assert.equal(await page.locator('#nurupuru-anywhere').count(), 0);assert.equal(await page.locator('#foreign').evaluate(el => el.style.opacity), '0.6', 'closing preserves the previously released image');
   assert.equal(await page.locator('#first').evaluate(el => el.style.opacity), '', 'closing also removes the current image effect');

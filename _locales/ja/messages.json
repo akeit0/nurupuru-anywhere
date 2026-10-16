@@ -19,6 +19,7 @@
   "erase": { "message": "消す" },
   "grab": { "message": "つかむ" },
   "size": { "message": "サイズ" },
+  "grabRadius": { "message": "つかむ範囲" },
   "mobility": { "message": "動きやすさ" },
   "fill": { "message": "全体を塗る" },
   "clear": { "message": "塗りを消去" },

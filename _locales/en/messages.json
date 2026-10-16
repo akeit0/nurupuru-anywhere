@@ -19,6 +19,7 @@
   "erase": { "message": "Erase" },
   "grab": { "message": "Grab" },
   "size": { "message": "Size" },
+  "grabRadius": { "message": "Grab radius" },
   "mobility": { "message": "Mobility" },
   "fill": { "message": "Paint all" },
   "clear": { "message": "Clear mask" },

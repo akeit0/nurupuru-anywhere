@@ -5,7 +5,7 @@ English | [日本語](README_JA.md)
 Make web images wobble like jelly. Paint an area, grab it, and watch it bounce back.
 A Chrome / Edge extension powered by the physics engine from [Nurupuru](https://github.com/akeit0/nurupuru).
 
-Work with one image at a time. The effect stays over the original image and follows page scrolling.
+Work with one target at a time. The effect stays over the selected element or area and follows page scrolling.
 The interface uses Japanese when your browser's display language is Japanese, and English otherwise.
 
 ## Installation
@@ -22,32 +22,34 @@ Updates are manual: replace the contents of that folder with the new ZIP's conte
 ## Usage
 
 1. Open a regular web page and click the extension's toolbar button.
-2. Click the image or canvas you want to animate.
+2. Click the image or canvas you want to animate, or drag to select any rectangular area on the page.
 3. Use **Paint** to mark the areas that should move. **Mobility** ranges from 0 (fixed) to 255 (most movable).
 4. Use **Grab** to pull a painted area, then release it.
 
+An area selection overlays a still snapshot, including its background, at its page coordinates. It follows normal page scrolling, but does not track fixed elements, internal scrolling, or layout changes. The original page remains visible wherever the snapshot moves away. Resizing the viewport releases the selection.
+
 Under **Material**, choose a preset or adjust softness, return speed, and damping.
 The circle around the pointer previews the brush size or grab radius. Under **Grab**, turn off **Show cursor range** to hide the grab circle.
-Brush and material settings carry over when you select another image. Settings are not saved per image.
+Brush and material settings carry over when you select another target. Settings are not saved per target.
 
 | Control | Action |
 | --- | --- |
 | B / E / G | Paint / Erase / Grab |
-| I | Select or change the image. Press again to cancel |
+| I | Select or change the target. Press again to cancel |
 | Right-drag while painting | Temporarily erase |
-| Esc | Cancel image selection |
-| ON / OFF | Toggle the effect. OFF restores the original image and page interaction while keeping the mask |
+| Esc | Cancel selection |
+| ON / OFF | Toggle the effect. OFF restores the original page display and interaction while keeping the mask |
 | Fold / Expand | Collapse or expand the detailed controls |
-| Release image | Restore the current image and remove its mask. Keep the panel and shared settings |
-| Close | Restore the image and close the extension controls |
+| Release | Remove the current target's effect and mask. Keep the panel and shared settings |
+| Close | Remove the effect and close the extension controls |
 
-The current status, ON/OFF, and Release image remain available while the panel is folded.
+The current status, ON/OFF, and Release remain available while the panel is folded.
 Click the extension's toolbar button again to expand the panel.
 Drag the panel heading to move the controls out of the way.
-The image selection state appears inside the Select image button.
-While changing images, click Selecting image / Cancel again or press Esc to return to the previous mask and effect.
+The selection state appears inside the Select target button.
+While changing targets, click Selecting / Cancel again or press Esc to return to the previous mask and effect.
 
-States are shown with text and color: purple for image selection, green for Paint, orange for Erase, blue for Grab, and gray for OFF.
+States are shown with text and color: purple for selection, green for Paint, orange for Erase, blue for Grab, and gray for OFF.
 
 ## Supported images and data handling
 

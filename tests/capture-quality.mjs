@@ -17,7 +17,7 @@ const server = http.createServer((req, res) => {
 });
 await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
 try {
-  for (const [density, zoom, mode = ''] of [[1, 1], [1.25, 1.1], [2, 1], [3, 1], [1.25, 1.1, 'partial'], [1.25, 1.1, 'scroll'], [1, 1, 'quirks']]) {
+  for (const [density, zoom, mode = ''] of [[1, 1], [1.25, 1.1], [2, 1], [3, 1], [1.25, 1.1, 'partial'], [1.25, 1.1, 'scroll'], [1, 1, 'quirks'], [1.25, 1.1, 'region'], [2, 1, 'region']]) {
     const context = await chromium.launchPersistentContext('', {
       channel: 'chromium', headless: true, viewport: { width: 1280, height: 900 }, deviceScaleFactor: density,
       // captureVisibleTab uses the browser's display scale, not just CDP emulation.
@@ -38,11 +38,15 @@ try {
       const { ui, control } = await closedUI(page);
       await ui('panel').evaluate(el => el.style.visibility = 'hidden');
       await page.mouse.move(20, 800);
-      const before = await page.screenshot(), rect = await page.locator('img').boundingBox();
+      const before = await page.screenshot();let rect = await page.locator('img').boundingBox();
       const viewport = await page.evaluate(() => ({ width: innerWidth, height: innerHeight, ratio: devicePixelRatio }));
-      await page.mouse.click(Math.max(10, rect.x + rect.width / 2), Math.max(10, rect.y + rect.height / 2));
+      if (mode === 'region') {
+        rect = { x: rect.x + 50.3, y: rect.y + 70.4, width: 500.4, height: 300.6 };
+        await page.mouse.move(rect.x, rect.y);await page.mouse.down();
+        await page.mouse.move(rect.x + rect.width, rect.y + rect.height, { steps: 8 });await page.mouse.up();
+      } else await page.mouse.click(Math.max(10, rect.x + rect.width / 2), Math.max(10, rect.y + rect.height / 2));
       await ui('hit').waitFor({ state: 'visible' });
-      assert.equal(await ui('status').textContent(), await worker.evaluate(() => chrome.i18n.getMessage('captured')), 'the test must exercise the capture fallback');
+      assert.equal(await ui('status').textContent(), await worker.evaluate(key => chrome.i18n.getMessage(key), mode === 'region' ? 'regionCaptured' : 'captured'), 'the test must exercise tab capture');
       await control('[data-tool=grab]').evaluate(el => el.click());
       await page.mouse.move(20, 800);
       await page.waitForTimeout(100);

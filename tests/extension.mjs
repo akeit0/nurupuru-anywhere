@@ -92,7 +92,9 @@ try {
   const painted = async (tool, from, to) => {
     await control('[data-tool=' + tool + ']').click();await page.mouse.move(from.x, from.y);await page.mouse.down();await page.mouse.move(to.x, to.y, { steps: 12 });await page.mouse.up();
   };
-  await clickSource('#first');
+  const first = await page.locator('#first').boundingBox();
+  await page.mouse.move(first.x + 200, first.y + 150);await page.mouse.down();
+  await page.mouse.move(first.x + 202, first.y + 151);await page.mouse.up();
   await page.waitForFunction(() => document.getElementById('first').style.opacity === '0');
   assert.ok(!page.url().endsWith('/navigated'), 'selecting a linked image does not navigate');
   await ui('hit').waitFor({ state: 'visible' });
@@ -337,6 +339,57 @@ try {
   const embeddedPixel = await pixel(canvasCenter);
   assert.ok(Math.abs(embeddedPixel[0] - 120) < 4 && Math.abs(embeddedPixel[1] - 60) < 4 && Math.abs(embeddedPixel[2] - 200) < 4, 'the embedded canvas is captured through the visible frame');
   await ui('release').click();assert.equal(await page.locator('#embedded').evaluate(el => el.style.opacity), '', 'release restores the embedded frame');
+  await page.evaluate(() => {
+    const area = document.createElement('div');area.id = 'area';
+    area.style.cssText = 'position:absolute;left:60px;top:540px;width:400px;height:180px;background:rgb(54,126,190);color:white';
+    const heading = document.createElement('h2');heading.textContent = 'Text and CSS background';area.append(heading);
+    const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');svg.setAttribute('width', '60');svg.setAttribute('height', '60');svg.style.cssText = 'position:absolute;right:20px;top:70px';
+    const circle = document.createElementNS(svg.namespaceURI, 'circle');
+    for (const [key, value] of Object.entries({ cx: 30, cy: 30, r: 28, fill: 'orange' })) circle.setAttribute(key, value);
+    svg.append(circle);area.append(svg);
+    document.body.append(area);scrollTo(0, 100);
+  });
+  const area = await page.locator('#area').boundingBox(), areaCenter = { x: area.x + 180, y: area.y + 110 };
+  async function dragArea(reverse = false) {
+    await page.mouse.move(area.x + (reverse ? area.width : 0), area.y + (reverse ? area.height : 0));await page.mouse.down();
+    await page.mouse.move(area.x + (reverse ? 0 : area.width), area.y + (reverse ? 0 : area.height), { steps: 8 });
+  }
+  await page.keyboard.press('i');await dragArea(true);
+  let outline = await ui('highlight').boundingBox();
+  assert.ok(Math.abs(outline.x - area.x) < 1 && Math.abs(outline.y - area.y) < 1 && Math.abs(outline.width - area.width) < 1 && Math.abs(outline.height - area.height) < 1, 'reverse dragging previews the selected rectangle');
+  await page.screenshot({ path: path.join(root, 'test-results/area-select.png') });
+  await page.mouse.up();await ui('hit').waitFor({ state: 'visible' });
+  assert.equal(await ui('selectHint').textContent(), t('region'));
+  assert.equal(await ui('status').textContent(), t('regionCaptured'));
+  assert.equal(await page.locator('#area').evaluate(el => el.style.opacity), '', 'area selection does not hide underlying page elements');
+  let areaHit = await ui('hit').boundingBox();
+  assert.ok(Math.abs(areaHit.x - area.x) < 1 && Math.abs(areaHit.y - area.y) < 1 && Math.abs(areaHit.width - area.width) < 1 && Math.abs(areaHit.height - area.height) < 1, 'area snapshot has the selected bounds');
+  await control('[data-tool=grab]').click();
+  const areaPixel = await pixel(areaCenter);
+  assert.ok(Math.abs(areaPixel[0] - 54) < 4 && Math.abs(areaPixel[1] - 126) < 4 && Math.abs(areaPixel[2] - 190) < 4, 'snapshot captures CSS background pixels');
+  await page.locator('#area').evaluate(el => el.style.background = 'rgb(240,200,30)');
+  assert.deepEqual(await pixel(areaCenter), areaPixel, 'area remains a static snapshot when the page changes');
+  await ui('enabled').click();
+  assert.ok((await pixel(areaCenter))[0] > 230, 'OFF reveals the current underlying page');
+  await ui('enabled').click();assert.deepEqual(await pixel(areaCenter), areaPixel, 'ON restores the area snapshot');
+  await control('[data-tool=brush]').click();await ui('fill').click();const areaRest = await positions();
+  await painted('grab', areaCenter, { x: areaCenter.x + 85, y: areaCenter.y - 55 });
+  assert.ok((await positions()).some((value, i) => Math.abs(value - areaRest[i]) > 1), 'the selected area supports mask painting and physics');
+  await page.screenshot({ path: path.join(root, 'test-results/area-grab.png') });
+  await ui('reset').click();await page.waitForTimeout(100);
+  await page.keyboard.press('i');await dragArea();await page.keyboard.press('Escape');await page.mouse.up();
+  assert.equal(await ui('highlight').isVisible(), false);
+  await ui('hit').waitFor({ state: 'visible' });
+  assert.equal(await ui('selectHint').textContent(), t('region'), 'Esc during a drag keeps the previous area and releases pointer capture');
+  await page.waitForTimeout(100);
+  assert.ok((await positions()).every((value, i) => value === areaRest[i]), 'canceling a drag preserves the previous mesh');
+  await page.evaluate(() => scrollBy(0, 90));await page.waitForTimeout(100);
+  areaHit = await ui('hit').boundingBox();
+  assert.ok(Math.abs(areaHit.y - (area.y - 90)) < 1, 'area follows document scrolling');
+  await page.setViewportSize({ width: 1100, height: 900 });
+  await closed.waitFor(root => root.getElementById('panel').dataset.state === 'idle');
+  assert.equal(await ui('status').textContent(), t('sizeChanged'), 'resizing releases the area instead of leaving a misaligned snapshot');
+  assert.equal(await page.locator('#area').evaluate(el => el.style.opacity), '', 'area teardown leaves the original page intact');
   await ui('close').click();
   assert.deepEqual(errors, []);
   console.log('PASS (' + locale + '): unpacked extension, page-world screenshot isolation, CSP, images, 2D/WebGL canvas snapshots, mask/physics, shared settings, positioning, OFF/style restoration, canceled captures, viewport changes and teardown');

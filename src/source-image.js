@@ -20,13 +20,16 @@ function position(value, free) {
 }
 function captureViewport() {
   const v = visualViewport;
-  return { width: v?.width || innerWidth, height: v?.height || innerHeight, left: v?.offsetLeft || 0, top: v?.offsetTop || 0, ratio: (devicePixelRatio || 1) * (v?.scale || 1) };
+  return { width: v?.width || innerWidth, height: v?.height || innerHeight, left: v?.offsetLeft || 0, top: v?.offsetTop || 0, ratio: (devicePixelRatio || 1) * (v?.scale || 1), scrollX, scrollY };
+}
+export async function readRegion(rect, host) {
+  const region = { left: rect.left + scrollX, top: rect.top + scrollY, width: rect.width, height: rect.height, viewportWidth: innerWidth, viewportHeight: innerHeight };
+  return { ...await captureRect(rect, host), region };
 }
 export async function readSource(image, host) {
   const isImage = image instanceof HTMLImageElement;
   if (isImage && !image.complete) await image.decode();
   const rect = imageRect(image), style = getComputedStyle(image);
-  const sourceUrl = image.currentSrc || image.src;
   if (rect.width < 8 || rect.height < 8 || (isImage && !image.naturalWidth)) throw Error(t('visibleImage'));
   if (isImage) {
     const c = surface(rect.width, rect.height), g = c.getContext('2d');
@@ -50,6 +53,13 @@ export async function readSource(image, host) {
   }
   // Capture canvases and embedded frames as displayed. This also handles WebGL
   // buffers after presentation and protected image pixels without extra access.
+  const sourceUrl = image.currentSrc || image.src;
+  return captureRect(rect, host, () => {
+    const after = imageRect(image);
+    return image.isConnected && (image.currentSrc || image.src) === sourceUrl && ['left', 'top', 'width', 'height'].every(key => Math.abs(after[key] - rect[key]) <= 1);
+  });
+}
+async function captureRect(rect, host, unchanged = () => true) {
   const viewport = captureViewport();
   const left = Math.max(viewport.left, rect.left), top = Math.max(viewport.top, rect.top);
   const width = Math.min(viewport.left + viewport.width, rect.left + rect.width) - left, height = Math.min(viewport.top + viewport.height, rect.top + rect.height) - top;
@@ -63,9 +73,8 @@ export async function readSource(image, host) {
   if (!reply?.ok) throw Error(reply?.error || t('captureFailed'));
   const bitmap = await createImageBitmap(await (await fetch(reply.dataUrl)).blob());
   try {
-    const after = imageRect(image);
     const current = captureViewport();
-    if (Object.keys(viewport).some(key => current[key] !== viewport[key]) || (image.currentSrc || image.src) !== sourceUrl || ['left', 'top', 'width', 'height'].some(key => Math.abs(after[key] - rect[key]) > 1)) throw Error(t('captureChanged'));
+    if (Object.keys(viewport).some(key => current[key] !== viewport[key]) || !unchanged()) throw Error(t('captureChanged'));
     // Use the display's pixel ratio, not bitmap.width / innerWidth: the latter
     // mixes rounded CSS dimensions and scrollbar pixels at fractional zoom.
     const scale = viewport.ratio;

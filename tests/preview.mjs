@@ -30,9 +30,9 @@ try {
       }
     }
     assert.equal(await panel.getAttribute('lang'), english ? 'en' : 'ja');
-    await state('idle');assert.equal(await control('#selectLabel').textContent(), english ? 'Select image' : '画像を選ぶ');
+    await state('idle');assert.equal(await control('#selectLabel').textContent(), english ? 'Select target' : '対象を選ぶ');
     assert.equal(await control('#stateLabel,#targetName').count(), 0, 'image selection status is integrated into the selection button');
-    await state('selecting');assert.equal(await control('#selectLabel').textContent(), english ? 'Selecting image' : '画像を選択中');
+    await state('selecting');assert.equal(await control('#selectLabel').textContent(), english ? 'Selecting' : '選択中');
     await page.screenshot({ path: fileURLToPath(new URL('../test-results/preview-selecting.png', import.meta.url)) });
     await state('brush');assert.equal(await control('#brush').isVisible(), true);
     await assertToolLayoutStable();await state('brush');

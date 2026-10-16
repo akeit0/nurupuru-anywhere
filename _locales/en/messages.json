@@ -3,6 +3,7 @@
   "extensionDescription": { "message": "Select an image or area on a web page, paint where it moves, then grab and stretch it like jelly." },
   "actionTitle": { "message": "Nurupuru: Select a target" },
   "brand": { "message": "Nurupuru" },
+  "brandSubtitle": { "message": "Anywhere" },
   "movePanel": { "message": "Drag to move the controls" },
   "fold": { "message": "Fold" },
   "expand": { "message": "Expand" },

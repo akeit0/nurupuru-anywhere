@@ -30,6 +30,7 @@ try {
       }
     }
     assert.equal(await panel.getAttribute('lang'), english ? 'en' : 'ja');
+    assert.equal(await panel.getAttribute('aria-label'), english ? 'Nurupuru Anywhere' : 'どこでもぬるぷる');
     await state('idle');assert.equal(await control('#selectLabel').textContent(), english ? 'Select target' : '対象を選ぶ');
     assert.equal(await control('#stateLabel,#targetName').count(), 0, 'image selection status is integrated into the selection button');
     await state('selecting');assert.equal(await control('#selectLabel').textContent(), english ? 'Selecting' : '選択中');

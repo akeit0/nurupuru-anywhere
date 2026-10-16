@@ -68,10 +68,11 @@ try {
   const panel = page.locator('#nurupuru-anywhere');
   const closed = await closedUI(page), { ui, control } = closed;
   assert.equal((await worker.evaluate(() => chrome.i18n.getUILanguage())).split('-')[0], language);
+  assert.equal(await worker.evaluate(() => chrome.runtime.getManifest().name), t('extensionName'));
   assert.equal(await worker.evaluate(() => chrome.i18n.getMessage('extensionDescription')), t('extensionDescription'));
   assert.equal(await worker.evaluate(() => chrome.action.getTitle({})), t('actionTitle'));
   assert.equal(await ui('panel').getAttribute('lang'), language);
-  assert.equal(await control('header strong').textContent(), t('brand') + ' Anywhere');
+  assert.equal(await control('header strong').textContent(), t('brand') + (t('brandSubtitle') ? ' ' + t('brandSubtitle') : ''));
   assert.equal(await ui('panel').getAttribute('data-state'), 'selecting');
   assert.equal(await ui('editing').isVisible(), false, 'start with image selection before exposing editing controls');
   await page.keyboard.press('i');assert.equal(await ui('panel').getAttribute('data-state'), 'idle');

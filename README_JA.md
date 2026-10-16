@@ -1,4 +1,4 @@
-# Nurupuru Anywhere
+# どこでもぬるぷる（Nurupuru Anywhere）
 
 [English](README.md) | 日本語
 
@@ -10,7 +10,7 @@
 
 ## インストール
 
-1. [Releases](https://github.com/akeit0/nurupuru-anywhere/releases/latest)から **`nurupuru-anywhere-0.1.2.zip`** をダウンロードする。`Source code (zip)` は開発用のソースです。
+1. [Releases](https://github.com/akeit0/nurupuru-anywhere/releases/latest)から **`nurupuru-anywhere-0.1.3.zip`** をダウンロードする。`Source code (zip)` は開発用のソースです。
 2. ZIPを、保存しておける場所に展開する。
 3. Chrome の `chrome://extensions`、または Edge の `edge://extensions` を開く。
 4. デベロッパーモードを有効にする。

@@ -10,7 +10,7 @@ The interface uses Japanese when your browser's display language is Japanese, an
 
 ## Installation
 
-1. Download **`nurupuru-anywhere-0.1.2.zip`** from [Releases](https://github.com/akeit0/nurupuru-anywhere/releases/latest). `Source code (zip)` is for development.
+1. Download **`nurupuru-anywhere-0.1.3.zip`** from [Releases](https://github.com/akeit0/nurupuru-anywhere/releases/latest). `Source code (zip)` is for development.
 2. Extract the ZIP to a folder you can keep.
 3. Open `chrome://extensions` in Chrome or `edge://extensions` in Edge.
 4. Turn on **Developer mode**.

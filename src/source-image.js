@@ -23,30 +23,33 @@ function captureViewport() {
   return { width: v?.width || innerWidth, height: v?.height || innerHeight, left: v?.offsetLeft || 0, top: v?.offsetTop || 0, ratio: (devicePixelRatio || 1) * (v?.scale || 1) };
 }
 export async function readSource(image, host) {
-  if (!image.complete) await image.decode();
+  const isImage = image instanceof HTMLImageElement;
+  if (isImage && !image.complete) await image.decode();
   const rect = imageRect(image), style = getComputedStyle(image);
   const sourceUrl = image.currentSrc || image.src;
-  if (rect.width < 8 || rect.height < 8 || !image.naturalWidth) throw Error(t('visibleImage'));
-  const c = surface(rect.width, rect.height), g = c.getContext('2d');
-  try {
-    const iw = image.naturalWidth, ih = image.naturalHeight;
-    let w = rect.width, h = rect.height;
-    if (style.objectFit !== 'fill') {
-      let scale = style.objectFit === 'cover' ? Math.max(w / iw, h / ih) : Math.min(w / iw, h / ih);
-      if (style.objectFit === 'none') scale = 1;
-      if (style.objectFit === 'scale-down') scale = Math.min(1, scale);
-      w = iw * scale;h = ih * scale;
+  if (rect.width < 8 || rect.height < 8 || (isImage && !image.naturalWidth)) throw Error(t('visibleImage'));
+  if (isImage) {
+    const c = surface(rect.width, rect.height), g = c.getContext('2d');
+    try {
+      const iw = image.naturalWidth, ih = image.naturalHeight;
+      let w = rect.width, h = rect.height;
+      if (style.objectFit !== 'fill') {
+        let scale = style.objectFit === 'cover' ? Math.max(w / iw, h / ih) : Math.min(w / iw, h / ih);
+        if (style.objectFit === 'none') scale = 1;
+        if (style.objectFit === 'scale-down') scale = Math.min(1, scale);
+        w = iw * scale;h = ih * scale;
+      }
+      const parts = style.objectPosition.split(' ');
+      const x = position(parts[0], rect.width - w), y = position(parts[1] || '50%', rect.height - h);
+      g.drawImage(image, x * c.width / rect.width, y * c.height / rect.height, w * c.width / rect.width, h * c.height / rect.height);
+      g.getImageData(0, 0, 1, 1);
+      return { image: c, rect, capture: false, slice: { x: 0, y: 0, w: 1, h: 1 } };
+    } catch (error) {
+      if (error.name !== 'SecurityError') throw error;
     }
-    const parts = style.objectPosition.split(' ');
-    const x = position(parts[0], rect.width - w), y = position(parts[1] || '50%', rect.height - h);
-    g.drawImage(image, x * c.width / rect.width, y * c.height / rect.height, w * c.width / rect.width, h * c.height / rect.height);
-    g.getImageData(0, 0, 1, 1);
-    return { image: c, rect, capture: false, slice: { x: 0, y: 0, w: 1, h: 1 } };
-  } catch (error) {
-    if (error.name !== 'SecurityError') throw error;
   }
-  // Cross-origin pixels may be protected. Capture the displayed appearance
-  // using activeTab, without re-requesting the original image URL.
+  // Capture canvases and embedded frames as displayed. This also handles WebGL
+  // buffers after presentation and protected image pixels without extra access.
   const viewport = captureViewport();
   const left = Math.max(viewport.left, rect.left), top = Math.max(viewport.top, rect.top);
   const width = Math.min(viewport.left + viewport.width, rect.left + rect.width) - left, height = Math.min(viewport.top + viewport.height, rect.top + rect.height) - top;

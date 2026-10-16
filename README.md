@@ -22,7 +22,7 @@ Updates are manual: replace the contents of that folder with the new ZIP's conte
 ## Usage
 
 1. Open a regular web page and click the extension's toolbar button.
-2. Click the image you want to animate.
+2. Click the image or canvas you want to animate.
 3. Use **Paint** to mark the areas that should move. **Mobility** ranges from 0 (fixed) to 255 (most movable).
 4. Use **Grab** to pull a painted area, then release it.
 
@@ -51,7 +51,9 @@ States are shown with text and color: purple for image selection, green for Pain
 
 ## Supported images and data handling
 
-- Supports regular `img` elements on the page. CSS backgrounds, videos, images inside iframes, and complex transforms such as rotation are not supported.
+- Supports `img`, `canvas`, and embedded `iframe` areas on the page. CSS backgrounds, video elements, and complex transforms such as rotation are not supported.
+- For content inside an iframe, select the entire embedded area as a still image, including its margins and controls. Individual elements inside it are not selected.
+- A 2D or WebGL canvas is captured as a still image of its displayed appearance. The effect uses that snapshot while the original canvas continues running underneath; OFF or Release restores its current display.
 - When reading an image directly, CSS backgrounds, borders, and shadows on the `img` itself are not included in the effect. Decorations on its parent remain visible.
 - If image pixels cannot be read directly, for example because the image is on another domain, the extension captures the visible area using the browser's screen capture API. This includes the background and any overlapping elements, and does not preserve transparency.
 - If the image size or visible area changes after capture, the original image is restored. Select it again to continue. Animated images are treated as a still image at selection time.

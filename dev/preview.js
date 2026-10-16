@@ -18,7 +18,7 @@ async function openUI() {
     try {
       await new Promise((resolve, reject) => {
         const script = document.createElement('script');script.src = '../dist/content.js';
-        script.onload = resolve;script.onerror = () => reject(Error('先に npm run build を実行してください。'));
+        script.onload = () => { previewRoot.getElementById('picker').style.pointerEvents = 'none';resolve(); };script.onerror = () => reject(Error('先に npm run build を実行してください。'));
         document.body.append(script);
       });
     } finally { Element.prototype.attachShadow = attach; }

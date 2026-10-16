@@ -19,12 +19,19 @@ for (const lang of ['ja', 'en']) {
 assert.deepEqual(manifest.permissions, ['activeTab', 'scripting']);assert.equal(manifest.host_permissions, undefined);
 const svg = '<svg xmlns="http://www.w3.org/2000/svg" width="400" height="300"><defs><linearGradient id="g" x2="0" y2="1"><stop stop-color="#d5baff"/><stop offset="1" stop-color="#8870d5"/></linearGradient></defs><ellipse cx="200" cy="150" rx="150" ry="125" fill="url(#g)"/><circle cx="155" cy="150" r="10" fill="#342945"/><circle cx="245" cy="150" r="10" fill="#342945"/><path d="M177 174q23 28 46 0" stroke="#342945" stroke-width="7" fill="none"/></svg>';
 let foreignRequests = 0;
-const foreign = http.createServer((req, res) => { foreignRequests++;res.writeHead(200, { 'Content-Type': 'image/svg+xml' });res.end(svg); });
+const foreign = http.createServer((req, res) => {
+  foreignRequests++;
+  if (req.url === '/embedded.html') {
+    res.writeHead(200, { 'Content-Type': 'text/html' });
+    res.end('<!doctype html><style>body{margin:8px}canvas{display:block}</style><canvas width="400" height="300"></canvas><script>const g=document.querySelector("canvas").getContext("2d");g.fillStyle="rgb(120,60,200)";g.fillRect(0,0,400,300);</script>');return;
+  }
+  res.writeHead(200, { 'Content-Type': 'image/svg+xml' });res.end(svg);
+});
 await new Promise(resolve => foreign.listen(0, '127.0.0.1', resolve));
 const other = 'http://127.0.0.1:' + foreign.address().port;
 const server = http.createServer((req, res) => {
   if (req.url === '/image.svg') { res.writeHead(200, { 'Content-Type': 'image/svg+xml' });res.end(svg);return; }
-  res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', 'Content-Security-Policy': "default-src 'self'; script-src 'none'; style-src 'unsafe-inline'; require-trusted-types-for 'script'; trusted-types 'none'; img-src 'self' " + other });
+  res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', 'Content-Security-Policy': "default-src 'self'; script-src 'none'; style-src 'unsafe-inline'; require-trusted-types-for 'script'; trusted-types 'none'; frame-src " + other + "; img-src 'self' " + other });
   res.end('<!doctype html><meta charset="utf-8"><title>Image fixtures</title><style>body{margin:32px;background:#f9f5ee;color:#302941;font:16px system-ui}h1{font-size:24px}main{display:flex;gap:40px}img{display:block;width:400px;height:300px}a{display:block}.spacer{height:1200px}</style><h1>ページ上の画像で、ぬるぷる。</h1><p>このページの画像を選んで動かします。</p><main><a href="/navigated"><img id="first" src="/image.svg"></a><img id="foreign" src="' + other + '/image.svg"></main><div class="spacer"></div>');
 });
 await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
@@ -77,10 +84,15 @@ try {
     const png = await page.screenshot({ clip: { x: Math.floor(point.x), y: Math.floor(point.y), width: 1, height: 1 } });
     return page.evaluate(async data => { const image = await createImageBitmap(new Blob([Uint8Array.from(atob(data), x => x.charCodeAt(0))], { type: 'image/png' }));const canvas = document.createElement('canvas');canvas.width = canvas.height = 1;const g = canvas.getContext('2d');g.drawImage(image, 0, 0);image.close();return [...g.getImageData(0, 0, 1, 1).data]; }, png.toString('base64'));
   };
+  const clickSource = async selector => {
+    await page.locator(selector).scrollIntoViewIfNeeded();
+    const r = await page.locator(selector).boundingBox();
+    await page.mouse.click(r.x + r.width / 2, r.y + r.height / 2);
+  };
   const painted = async (tool, from, to) => {
     await control('[data-tool=' + tool + ']').click();await page.mouse.move(from.x, from.y);await page.mouse.down();await page.mouse.move(to.x, to.y, { steps: 12 });await page.mouse.up();
   };
-  await page.locator('#first').click();
+  await clickSource('#first');
   await page.waitForFunction(() => document.getElementById('first').style.opacity === '0');
   assert.ok(!page.url().endsWith('/navigated'), 'selecting a linked image does not navigate');
   await ui('hit').waitFor({ state: 'visible' });
@@ -177,7 +189,7 @@ try {
   await ui('material').locator('summary').click();await control('[data-material=soft]').click();assert.equal(await ui('softness').inputValue(), '75');
   await ui('showGrabRange').evaluate(el => { el.checked = false;el.dispatchEvent(new Event('change')); });
   await page.keyboard.press('i');assert.equal(await page.locator('#first').evaluate(el => el.style.opacity), '', 'switching image restores the previous element');
-  const requests = foreignRequests;await page.locator('#foreign').click();
+  const requests = foreignRequests;await clickSource('#foreign');
   await page.waitForFunction(() => document.getElementById('foreign').style.opacity === '0', { timeout: 15000 });
   assert.equal(await ui('status').textContent(), t('captured'), 'cross-origin image uses real captureVisibleTab');
   assert.equal(foreignRequests, requests, 'extension does not re-download the image');
@@ -228,7 +240,7 @@ try {
   assert.equal(await ui('editing').isVisible(), false);assert.equal(await ui('panel').getAttribute('data-state'), 'idle');
   assert.equal(await ui('selectLabel').textContent(), t('selectImage'));assert.equal(await ui('softness').inputValue(), '75', 'release preserves shared settings');
   assert.equal(await ui('grabRadius').inputValue(), '180', 'release preserves the grab radius');
-  await ui('select').click();await page.locator('#first').click();await ui('hit').waitFor({ state: 'visible' });
+  await ui('select').click();await clickSource('#first');await ui('hit').waitFor({ state: 'visible' });
   await ui('close').click();assert.equal(await page.locator('#nurupuru-anywhere').count(), 0);assert.equal(await page.locator('#foreign').evaluate(el => el.style.opacity), '0.6', 'closing preserves the previously released image');
   assert.equal(await page.locator('#first').evaluate(el => el.style.opacity), '', 'closing also removes the current image effect');
   await activate();await page.waitForSelector('#nurupuru-anywhere', { state: 'attached' });await closed.refresh();await ui('fold').click();await activate();
@@ -245,11 +257,87 @@ try {
   await closed.evaluate(root => { document.getElementById('foreign').click();root.getElementById('close').click(); });
   await page.waitForTimeout(700);assert.equal(await panel.count(), 0, 'closing during capture cannot recreate the extension UI');
   await activate();await page.waitForSelector('#nurupuru-anywhere', { state: 'attached' });await closed.refresh();
-  await page.locator('#first').click();await ui('hit').waitFor({ state: 'visible' });
+  await clickSource('#first');await ui('hit').waitFor({ state: 'visible' });
   await page.locator('#first').evaluate(el => el.remove());
   await closed.waitFor(root => root.getElementById('panel').dataset.state === 'idle');
   assert.equal(await ui('editing').isVisible(), false, 'removing the selected source releases its effect');
+  const tainted = await page.evaluate(() => {
+    const c = document.createElement('canvas');c.id = 'canvas2d';c.width = 400;c.height = 300;
+    c.setAttribute('aria-label', '2D canvas');c.style.cssText = 'position:absolute;left:32px;top:200px;width:400px;height:300px;pointer-events:none';
+    document.body.append(c);
+    const input = document.createElement('div');input.id = 'canvasInput';input.style.cssText = 'position:absolute;left:32px;top:200px;width:400px;height:300px';
+    globalThis.canvasPresses = 0;input.addEventListener('pointerdown', () => canvasPresses++);document.body.append(input);
+    const g = c.getContext('2d');g.drawImage(document.getElementById('foreign'), 0, 0);
+    g.fillStyle = 'rgb(230,80,110)';g.fillRect(130, 90, 140, 120);
+    try { g.getImageData(0, 0, 1, 1);return false; } catch (error) { return error.name === 'SecurityError'; }
+  });
+  assert.equal(tainted, true, 'the 2D canvas fixture contains unreadable cross-origin pixels');
+  await page.keyboard.press('i');
+  const canvasBox = await page.locator('#canvas2d').boundingBox(), canvasCenter = { x: canvasBox.x + 200, y: canvasBox.y + 150 };
+  await page.mouse.move(canvasCenter.x, canvasCenter.y);
+  assert.equal(await ui('highlight').isVisible(), true, 'canvas is highlighted as a selectable source');
+  await page.mouse.click(canvasCenter.x, canvasCenter.y);await ui('hit').waitFor({ state: 'visible' });
+  assert.equal(await page.evaluate(() => canvasPresses), 0, 'selection shields the page input layer from pointerdown');
+  assert.equal(await ui('status').textContent(), t('captured'), '2D canvas uses real tab capture');
+  assert.equal(await ui('selectHint').textContent(), '2D canvas', 'canvas labels appear in the image selection control');
+  await control('[data-tool=grab]').click();
+  const capturedPixel = await pixel(canvasCenter);
+  assert.ok(Math.abs(capturedPixel[0] - 230) < 4 && Math.abs(capturedPixel[1] - 80) < 4 && Math.abs(capturedPixel[2] - 110) < 4, 'captured 2D pixels match the displayed canvas');
+  await page.locator('#canvas2d').evaluate(c => { const g = c.getContext('2d');g.fillStyle = 'rgb(30,70,220)';g.fillRect(0, 0, c.width, c.height); });
+  assert.deepEqual(await pixel(canvasCenter), capturedPixel, 'redrawing the source does not replace its captured snapshot');
+  await ui('enabled').click();
+  const currentPixel = await pixel(canvasCenter);
+  assert.ok(Math.abs(currentPixel[2] - 220) < 4 && currentPixel[0] < 35, 'OFF shows the current canvas contents');
+  await ui('enabled').click();assert.deepEqual(await pixel(canvasCenter), capturedPixel, 'ON restores the selected snapshot');
+  await control('[data-tool=brush]').click();
+  await painted('brush', { x: canvasCenter.x - 50, y: canvasCenter.y }, { x: canvasCenter.x + 50, y: canvasCenter.y });
+  const canvasRest = await positions();
+  await control('[data-tool=grab]').click();await page.mouse.move(canvasCenter.x, canvasCenter.y);await page.mouse.down();
+  await page.mouse.move(canvasCenter.x + 70, canvasCenter.y + 40, { steps: 12 });await page.waitForTimeout(100);
+  assert.ok((await positions()).some((value, index) => Math.abs(value - canvasRest[index]) > 1), 'painted canvas snapshot deforms while grabbing');
+  await page.mouse.up();await ui('release').click();
+  assert.equal(await page.locator('#canvas2d').evaluate(el => el.style.opacity), '', 'release restores the canvas element');
+  await page.locator('#canvas2d').evaluate(el => el.remove());
+  await page.locator('#canvasInput').evaluate(el => el.remove());
+  await page.evaluate(() => {
+    const c = document.createElement('canvas');c.id = 'canvasGL';c.width = 400;c.height = 300;
+    c.style.cssText = 'position:absolute;left:32px;top:200px;width:400px;height:300px';document.body.append(c);
+    const gl = c.getContext('webgl2', { preserveDrawingBuffer: false });
+    function render() {
+      if (!c.isConnected) return;
+      gl.clearColor(.1, .75, .2, 1);gl.clear(gl.COLOR_BUFFER_BIT);c.dataset.ready = 'true';requestAnimationFrame(render);
+    }
+    requestAnimationFrame(render);
+  });
+  await page.waitForFunction(() => document.getElementById('canvasGL').dataset.ready === 'true');
+  assert.equal(await page.locator('#canvasGL').evaluate(el => el.getContext('webgl2').getContextAttributes().preserveDrawingBuffer), false);
+  await page.keyboard.press('i');await clickSource('#canvasGL');await ui('hit').waitFor({ state: 'visible' });
+  assert.equal(await ui('status').textContent(), t('captured'), 'WebGL canvas also uses tab capture');
+  assert.equal(await ui('selectHint').textContent(), t('canvas'), 'unnamed canvases have a localized label');
+  await control('[data-tool=grab]').click();
+  const glPixel = await pixel(canvasCenter);
+  assert.ok(glPixel[0] < 35 && Math.abs(glPixel[1] - 191) < 4 && Math.abs(glPixel[2] - 51) < 4, 'WebGL front-buffer pixels are captured without preserveDrawingBuffer');
+  await page.locator('#canvasGL').evaluate(el => el.style.width = '440px');
+  await closed.waitFor(root => root.getElementById('panel').dataset.state === 'idle');
+  assert.equal(await page.locator('#canvasGL').evaluate(el => el.style.opacity), '', 'resizing a captured canvas restores its original display');
+  await page.locator('#canvasGL').evaluate(el => el.remove());
+  await page.evaluate(url => {
+    const frame = document.createElement('iframe');frame.id = 'embedded';frame.src = url;
+    frame.style.cssText = 'position:absolute;left:32px;top:200px;width:420px;height:320px;border:4px solid blue';
+    const wrapper = document.createElement('div');document.body.append(wrapper);wrapper.attachShadow({ mode: 'open' }).append(frame);
+  }, other + '/embedded.html');
+  await page.frameLocator('#embedded').locator('canvas').waitFor();
+  assert.equal(await page.locator('#embedded').evaluate(el => el.contentDocument), null, 'the frame DOM is cross-origin');
+  await page.keyboard.press('i');await page.mouse.move(canvasCenter.x, canvasCenter.y);
+  assert.equal(await ui('highlight').isVisible(), true, 'cross-origin embedded content receives a selection outline');
+  await clickSource('#embedded');await ui('hit').waitFor({ state: 'visible' });
+  assert.equal(await ui('status').textContent(), t('captured'));
+  assert.equal(await ui('selectHint').textContent(), t('embedded'));
+  await control('[data-tool=grab]').click();
+  const embeddedPixel = await pixel(canvasCenter);
+  assert.ok(Math.abs(embeddedPixel[0] - 120) < 4 && Math.abs(embeddedPixel[1] - 60) < 4 && Math.abs(embeddedPixel[2] - 200) < 4, 'the embedded canvas is captured through the visible frame');
+  await ui('release').click();assert.equal(await page.locator('#embedded').evaluate(el => el.style.opacity), '', 'release restores the embedded frame');
   await ui('close').click();
   assert.deepEqual(errors, []);
-  console.log('PASS (' + locale + '): unpacked extension, page-world screenshot isolation, CSP, direct/captured images, mask/physics, shared settings, positioning, OFF/style restoration, canceled captures, viewport changes and teardown');
+  console.log('PASS (' + locale + '): unpacked extension, page-world screenshot isolation, CSP, images, 2D/WebGL canvas snapshots, mask/physics, shared settings, positioning, OFF/style restoration, canceled captures, viewport changes and teardown');
 } finally { await context.close();await new Promise(resolve => server.close(resolve));await new Promise(resolve => foreign.close(resolve)); }

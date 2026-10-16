@@ -40,7 +40,7 @@ export function createPanel() {
   const host = document.createElement('div');host.id = 'nurupuru-anywhere';
   for (const [key, value] of Object.entries({ all: 'initial', position: 'absolute', left: '0', top: '0', width: '0', height: '0', 'z-index': '2147483647', 'pointer-events': 'none' })) host.style.setProperty(key, value, 'important');
   const root = host.attachShadow({ mode: 'closed' });
-  root.innerHTML = `<style>${styles}</style><canvas id="canvas"></canvas><div id="highlight"></div><div id="hit" hidden></div><div id="cursor" aria-hidden="true" hidden><div></div></div>
+  root.innerHTML = `<style>${styles}</style><canvas id="canvas"></canvas><div id="highlight"></div><div id="hit" hidden></div><div id="cursor" aria-hidden="true" hidden><div></div></div><div id="picker" hidden></div>
     <section lang="${language}" dir="ltr" id="panel" aria-label="Nurupuru Anywhere">
       <header><div id="panelHandle" title="${t('movePanel')}"><strong>${t('brand')} <small>Anywhere</small></strong><span id="status" role="status" aria-live="polite"></span></div><button id="fold" aria-expanded="true" aria-controls="detail">${t('fold')}</button><button id="close" title="${t('closeTitle')}">${t('close')}</button></header>
       <div class="image-controls"><button id="select" aria-keyshortcuts="I"><span id="selectLabel">${t('selectImage')}</span><small id="selectHint"></small><small class="key" aria-hidden="true">I</small></button><button id="enabled" aria-pressed="true" title="${t('pause')}">ON</button><button id="release" title="${t('releaseTitle')}" hidden>${t('release')}</button></div>

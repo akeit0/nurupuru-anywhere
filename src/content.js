@@ -7,6 +7,8 @@ import { createPanel } from './panel.js';
 
 const PARAM_FIELDS = { size: 'brushSize', strength: 'brushStrength', grabRadius: 'grabRadius', softness: 'softness', returnSpeed: 'returnSpeed', damping: 'damping' };
 const TOOL_KEYS = { b: 'brush', e: 'erase', g: 'grab' };
+const isSource = node => node instanceof HTMLImageElement || node instanceof HTMLCanvasElement || node instanceof HTMLIFrameElement;
+const sourceLabel = target => target.alt || target.getAttribute('aria-label') || target.title || (target instanceof HTMLCanvasElement ? t('canvas') : target instanceof HTMLIFrameElement ? t('embedded') : '');
 
 if (globalThis.__nurupuruAnywhere) globalThis.__nurupuruAnywhere.wake();
 else start();
@@ -84,13 +86,15 @@ function start() {
     $('panel').dataset.state = state;
     $('enabled').textContent = enabled ? 'ON' : 'OFF';$('enabled').setAttribute('aria-pressed', String(enabled));$('enabled').title = enabled ? t('pause') : t('resume');
     $('selectLabel').textContent = loading ? t('loading') : selecting ? t('selecting') : effect ? t('changeImage') : t('selectImage');
-    $('selectHint').textContent = selecting ? t('cancel') : effect?.target.alt || '';
+    const name = effect ? sourceLabel(effect.target) : '';
+    $('selectHint').textContent = selecting ? t('cancel') : name;
     $('select').setAttribute('aria-pressed', String(selecting));
-    $('select').title = selecting ? t('selectingTitle') : effect ? t('changeTitle') + (effect.target.alt || t('selectedImage')) : t('selectTitle');
+    $('select').title = selecting ? t('selectingTitle') : effect ? t('changeTitle') + (name || t('selectedImage')) : t('selectTitle');
     $('select').disabled = loading || !enabled;
     $('release').hidden = !effect && !loading;
     $('editing').hidden = !effect;
     $('editing').disabled = !enabled || selecting || loading;
+    $('picker').hidden = !enabled || !selecting || loading;
     $('brush').hidden = tool === 'grab';
     $('grab').hidden = tool !== 'grab';
     $('brush').inert = tool === 'grab';$('grab').inert = tool !== 'grab';
@@ -224,13 +228,47 @@ function start() {
   }
   function pointerOver(event) {
     if (!enabled || !selecting || loading || event.composedPath().includes(host)) return;
-    const hover = event.composedPath().find(node => node instanceof HTMLImageElement);
+    const hover = event.composedPath().find(isSource);
     highlight.hidden = !hover;
     if (hover) locate(highlight, hover.getBoundingClientRect());
   }
+  function sourceAt(x, y) {
+    const visited = new Set();
+    function find(root) {
+      if (visited.has(root)) return;
+      visited.add(root);
+      let source;
+      for (const node of root.elementsFromPoint(x, y)) {
+        if (node === host) continue;
+        if (node.shadowRoot) source = find(node.shadowRoot);
+        if (!source && isSource(node)) source = node;
+        if (source) break;
+      }
+      if (source && source.getRootNode() !== root) return source;
+      // Transparent input layers can cover a pointer-events:none canvas. Include
+      // later canvases over earlier image elements in the same DOM tree too.
+      return [...root.querySelectorAll('canvas')].reverse().find(node => {
+        if (source && (node.compareDocumentPosition(source) & Node.DOCUMENT_POSITION_FOLLOWING)) return false;
+        const r = node.getBoundingClientRect(), style = getComputedStyle(node);
+        return r.width >= 8 && r.height >= 8 && x >= r.left && x <= r.right && y >= r.top && y <= r.bottom && style.visibility !== 'hidden' && style.opacity !== '0';
+      }) || source;
+    }
+    return find(document);
+  }
+  $('picker').onpointermove = event => {
+    const source = sourceAt(event.clientX, event.clientY);highlight.hidden = !source;
+    if (source) locate(highlight, source.getBoundingClientRect());
+  };
+  $('picker').onpointerleave = () => { highlight.hidden = true; };
+  $('picker').onpointerdown = event => { event.preventDefault();event.stopPropagation(); };
+  $('picker').onclick = event => {
+    event.preventDefault();event.stopPropagation();
+    const source = sourceAt(event.clientX, event.clientY);
+    if (source) void selectImage(source);
+  };
   function pickImage(event) {
     if (!enabled || !selecting || loading || event.composedPath().includes(host)) return;
-    const image = event.composedPath().find(node => node instanceof HTMLImageElement);
+    const image = event.composedPath().find(isSource);
     if (!image) return;
     event.preventDefault();event.stopImmediatePropagation();void selectImage(image);
   }

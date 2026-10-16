@@ -8,7 +8,7 @@ export function createPanel() {
   root.innerHTML = `<style>${styles}</style><canvas id="canvas"></canvas><div id="highlight"></div><div id="hit" hidden></div>
     <section lang="${language}" dir="ltr" id="panel" aria-label="Nurupuru Anywhere">
       <header><strong>${t('brand')} <small>Anywhere</small></strong><span id="status" role="status" aria-live="polite"></span><button id="fold" aria-expanded="true" aria-controls="detail">${t('fold')}</button><button id="close" title="${t('closeTitle')}">${t('close')}</button></header>
-      <div class="image-controls"><button id="select"><span id="selectLabel">${t('selectImage')}</span><small id="selectHint"></small></button><button id="enabled" aria-pressed="true" title="${t('pause')}">ON</button><button id="release" title="${t('releaseTitle')}" hidden>${t('release')}</button></div>
+      <div class="image-controls"><button id="select" aria-keyshortcuts="I"><span id="selectLabel">${t('selectImage')}</span><small id="selectHint"></small><small class="key" aria-hidden="true">I</small></button><button id="enabled" aria-pressed="true" title="${t('pause')}">ON</button><button id="release" title="${t('releaseTitle')}" hidden>${t('release')}</button></div>
       <div id="detail">
       <fieldset id="editing" hidden>
       <div class="tool-labels"><span>${t('paintGuide')}</span><span>${t('grabGuide')}</span></div>

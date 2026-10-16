@@ -67,6 +67,8 @@ try {
   assert.equal(await control('header strong').textContent(), t('brand') + ' Anywhere');
   assert.equal(await ui('panel').getAttribute('data-state'), 'selecting');
   assert.equal(await ui('editing').isVisible(), false, 'start with image selection before exposing editing controls');
+  await page.keyboard.press('i');assert.equal(await ui('panel').getAttribute('data-state'), 'idle');
+  await page.keyboard.press('i');assert.equal(await ui('panel').getAttribute('data-state'), 'selecting', 'I starts selection without an existing image');
   const positions = () => ui('canvas').evaluate(canvas => {
     const g = canvas.getContext('webgl2'), size = g.getBufferParameter(g.ARRAY_BUFFER, g.BUFFER_SIZE), data = new Float32Array(size / 4);
     g.getBufferSubData(g.ARRAY_BUFFER, 0, data);return [...data];
@@ -95,6 +97,7 @@ try {
   await ui('strength').evaluate(el => { el.value = '120';el.dispatchEvent(new Event('input')); });
   await control('[data-tool=brush]').click();await ui('strength').focus();await page.keyboard.press('g');
   assert.equal(await ui('panel').getAttribute('data-state'), 'brush', 'tool shortcuts respect a focused slider in the closed shadow root');
+  await page.keyboard.press('i');assert.equal(await ui('panel').getAttribute('data-state'), 'brush', 'I respects the focused slider too');
   await page.keyboard.press('ArrowLeft');assert.equal(await ui('strength').inputValue(), '119');
   await page.keyboard.press('ArrowRight');assert.equal(await ui('strength').inputValue(), '120');
   await ui('strength').evaluate(el => el.blur());await page.keyboard.press('g');
@@ -129,11 +132,19 @@ try {
   assert.ok(widePull > narrowPull * 1.5, `a wider grab radius moves more distant vertices: ${narrowPull} vs ${widePull}`);
   await ui('reset').click();await control('[data-tool=brush]').click();await ui('clear').click();await control('[data-tool=grab]').click();
   await ui('strength').evaluate(el => { el.value = '120';el.dispatchEvent(new Event('input')); });
-  await ui('select').click();assert.equal(await page.locator('#first').evaluate(el => el.style.opacity), '');
+  await page.evaluate(() => { const input = document.createElement('input');input.id = 'typing';document.body.append(input);input.focus(); });
+  await page.keyboard.press('i');assert.equal(await page.locator('#typing').inputValue(), 'i');
+  assert.equal(await ui('panel').getAttribute('data-state'), 'grab', 'typing in a page input does not change images');
+  await page.locator('#typing').evaluate(el => el.remove());
+  await page.keyboard.down('i');assert.equal(await page.locator('#first').evaluate(el => el.style.opacity), '');
+  await page.keyboard.down('i');assert.equal(await ui('panel').getAttribute('data-state'), 'selecting', 'holding I does not repeatedly toggle selection');
+  await page.keyboard.up('i');await page.keyboard.press('i');await ui('hit').waitFor({ state: 'visible' });
+  assert.equal(await page.locator('#first').evaluate(el => el.style.opacity), '0', 'I cancels image change and restores the effect');
+  await page.keyboard.press('i');
   await page.keyboard.press('Escape');await ui('hit').waitFor({ state: 'visible' });
   assert.equal(await page.locator('#first').evaluate(el => el.style.opacity), '0', 'canceling image change restores the existing effect');
   await ui('material').locator('summary').click();await control('[data-material=soft]').click();assert.equal(await ui('softness').inputValue(), '75');
-  await ui('select').click();assert.equal(await page.locator('#first').evaluate(el => el.style.opacity), '', 'switching image restores the previous element');
+  await page.keyboard.press('i');assert.equal(await page.locator('#first').evaluate(el => el.style.opacity), '', 'switching image restores the previous element');
   const requests = foreignRequests;await page.locator('#foreign').click();
   await page.waitForFunction(() => document.getElementById('foreign').style.opacity === '0', { timeout: 15000 });
   assert.equal(await ui('status').textContent(), t('captured'), 'cross-origin image uses real captureVisibleTab');
@@ -182,7 +193,7 @@ try {
   assert.equal(await page.locator('#foreign').evaluate(el => el.style.opacity), '0.6', 'page opacity changes while OFF survive re-enabling and release');
   assert.equal(await page.locator('#foreign').evaluate(el => el.style.getPropertyPriority('opacity')), 'important');
   assert.equal(await ui('editing').isVisible(), false);assert.equal(await ui('panel').getAttribute('data-state'), 'idle');
-  assert.equal(await ui('select').textContent(), t('selectImage'));assert.equal(await ui('softness').inputValue(), '75', 'release preserves shared settings');
+  assert.equal(await ui('selectLabel').textContent(), t('selectImage'));assert.equal(await ui('softness').inputValue(), '75', 'release preserves shared settings');
   assert.equal(await ui('grabRadius').inputValue(), '180', 'release preserves the grab radius');
   await ui('select').click();await page.locator('#first').click();await ui('hit').waitFor({ state: 'visible' });
   await ui('close').click();assert.equal(await page.locator('#nurupuru-anywhere').count(), 0);assert.equal(await page.locator('#foreign').evaluate(el => el.style.opacity), '0.6', 'closing preserves the previously released image');

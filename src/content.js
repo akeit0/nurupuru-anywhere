@@ -61,6 +61,7 @@ function start() {
     selecting = false;highlight.hidden = true;updateControls();requestFrame();
     notice(effect ? toolHelp() : t('startHint'));
   }
+  function toggleSelection() { selecting ? cancelSelection() : chooseImage(); }
   function detachImage() {
     generation++;loading = false;selecting = false;highlight.hidden = true;releaseImage();
     notice(t('released'));
@@ -215,14 +216,16 @@ function start() {
   }
   function keyDown(event) {
     const input = 'input,textarea,[contenteditable],select';
-    if (!enabled || loading || event.defaultPrevented || event.ctrlKey || event.metaKey || event.altKey || event.isComposing || root.activeElement?.matches(input) || event.composedPath().some(node => node.matches?.(input))) return;
+    if (!enabled || loading || event.repeat || event.defaultPrevented || event.ctrlKey || event.metaKey || event.altKey || event.isComposing || root.activeElement?.matches(input) || event.composedPath().some(node => node.matches?.(input))) return;
     if (event.key === 'Escape') {
       finishGesture();if (selecting) cancelSelection();return;
     }
-    const next = TOOL_KEYS[event.key.toLowerCase()];
+    const key = event.key.toLowerCase();
+    if (key === 'i') { event.preventDefault();event.stopImmediatePropagation();toggleSelection();return; }
+    const next = TOOL_KEYS[key];
     if (effect && !selecting && next) { event.preventDefault();event.stopImmediatePropagation();setTool(next); }
   }
-  $('select').onclick = () => selecting ? cancelSelection() : chooseImage();
+  $('select').onclick = toggleSelection;
   $('release').onclick = detachImage;
   function setFolded(folded) { $('panel').classList.toggle('folded', folded);$('fold').textContent = folded ? t('expand') : t('fold');$('fold').setAttribute('aria-expanded', String(!folded)); }
   $('fold').onclick = () => setFolded(!$('panel').classList.contains('folded'));

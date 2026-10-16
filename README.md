@@ -32,6 +32,7 @@ Brush and material settings carry over when you select another image. Settings a
 | Control | Action |
 | --- | --- |
 | B / E / G | Paint / Erase / Grab |
+| I | Select or change the image. Press again to cancel |
 | Right-drag while painting | Temporarily erase |
 | Esc | Cancel image selection |
 | ON / OFF | Toggle the effect. OFF restores the original image and page interaction while keeping the mask |

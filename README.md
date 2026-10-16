@@ -10,7 +10,7 @@ The interface uses Japanese when your browser's display language is Japanese, an
 
 ## Installation
 
-1. Download **`nurupuru-anywhere-0.1.1.zip`** from [Releases](https://github.com/akeit0/nurupuru-anywhere/releases/latest). `Source code (zip)` is for development.
+1. Download **`nurupuru-anywhere-0.1.2.zip`** from [Releases](https://github.com/akeit0/nurupuru-anywhere/releases/latest). `Source code (zip)` is for development.
 2. Extract the ZIP to a folder you can keep.
 3. Open `chrome://extensions` in Chrome or `edge://extensions` in Edge.
 4. Turn on **Developer mode**.
@@ -53,8 +53,8 @@ States are shown with text and color: purple for selection, green for Paint, ora
 
 ## Supported images and data handling
 
-- Supports `img`, `canvas`, and embedded `iframe` areas on the page. CSS backgrounds, video elements, and complex transforms such as rotation are not supported.
-- For content inside an iframe, select the entire embedded area as a still image, including its margins and controls. Individual elements inside it are not selected.
+- Click to select `img`, `canvas`, or embedded `iframe` areas. Drag to capture any rectangular area, including text, SVG, CSS backgrounds, or a still frame of a video. Continuous video playback and tracking complex transforms such as rotation are not supported.
+- Clicking an iframe selects the entire embedded area as a still image, including its margins and controls. Drag to capture a smaller visible area inside it.
 - A 2D or WebGL canvas is captured as a still image of its displayed appearance. The effect uses that snapshot while the original canvas continues running underneath; OFF or Release restores its current display.
 - When reading an image directly, CSS backgrounds, borders, and shadows on the `img` itself are not included in the effect. Decorations on its parent remain visible.
 - If image pixels cannot be read directly, for example because the image is on another domain, the extension captures the visible area using the browser's screen capture API. This includes the background and any overlapping elements, and does not preserve transparency.

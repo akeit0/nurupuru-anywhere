@@ -1,6 +1,6 @@
 {
   "extensionName": { "message": "Nurupuru Anywhere" },
-  "extensionDescription": { "message": "ページの画像を塗って、つかんで、ぷるぷる動かす。" },
+  "extensionDescription": { "message": "ページの画像や好きな範囲を選んで、塗って、つかんで、ぷるぷる動かす。" },
   "actionTitle": { "message": "ぬるぷる：対象を選ぶ" },
   "brand": { "message": "ぬるぷる" },
   "movePanel": { "message": "ドラッグで操作パネルを移動" },

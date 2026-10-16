@@ -15,7 +15,7 @@ function start() {
   const params = { ...DEFAULT_PARAMS, maskOpacity: 50, grabRadius: 110 };
   let tool = 'brush', effect = null, selecting = true, loading = false, generation = 0, stopped = false, enabled = true;
   let raf = 0, lastTime = 0, accumulator = 0, gesture = null;
-  const { host, root, $, canvas, hit, highlight } = createPanel();
+  const { host, root, $, canvas, hit, highlight, dispose: disposePanel } = createPanel();
   let renderer;
   let message = '';
   function notice(text) { message = text;$('status').textContent = enabled ? message : t('offStatus');$('status').title = $('status').textContent; }
@@ -81,6 +81,7 @@ function start() {
     $('editing').disabled = !enabled || selecting || loading;
     $('brush').hidden = tool === 'grab';
     $('grab').hidden = tool !== 'grab';
+    $('reset').hidden = tool !== 'grab';$('grabGuide').hidden = tool === 'grab';
     $('strengthRow').hidden = tool !== 'brush';
     for (const button of root.querySelectorAll('[data-tool]')) button.setAttribute('aria-pressed', String(button.dataset.tool === tool));
     const active = enabled && !selecting && !loading && !!effect;
@@ -215,7 +216,7 @@ function start() {
     event.preventDefault();event.stopImmediatePropagation();void selectImage(image);
   }
   function keyDown(event) {
-    const input = 'input,textarea,[contenteditable],select';
+    const input = 'input:not([type="range"]),textarea,[contenteditable],select';
     if (!enabled || loading || event.repeat || event.defaultPrevented || event.ctrlKey || event.metaKey || event.altKey || event.isComposing || root.activeElement?.matches(input) || event.composedPath().some(node => node.matches?.(input))) return;
     if (event.key === 'Escape') {
       finishGesture();if (selecting) cancelSelection();return;
@@ -259,7 +260,7 @@ function start() {
     stopped = true;generation++;releaseImage();if (raf) cancelAnimationFrame(raf);pageObserver.disconnect();imageObserver.disconnect();
     document.removeEventListener('pointermove', pointerOver, true);document.removeEventListener('click', pickImage, true);document.removeEventListener('keydown', keyDown, true);
     window.removeEventListener('scroll', requestFrame, true);window.removeEventListener('resize', requestFrame);window.removeEventListener('blur', finishGesture);document.removeEventListener('visibilitychange', visibility);
-    host.remove();delete globalThis.__nurupuruAnywhere;
+    disposePanel();host.remove();delete globalThis.__nurupuruAnywhere;
   }
   $('close').onclick = cleanup;
   document.addEventListener('pointermove', pointerOver, true);document.addEventListener('click', pickImage, true);document.addEventListener('keydown', keyDown, true);

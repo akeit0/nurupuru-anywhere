@@ -29,6 +29,7 @@ try {
     await page.screenshot({ path: fileURLToPath(new URL('../test-results/preview-brush.png', import.meta.url)) });
     await state('erase');assert.equal(await control('#strengthRow').isVisible(), false);
     await state('grab');assert.equal(await control('#grab').isVisible(), true);assert.equal(await control('#brush').isVisible(), false);
+    assert.equal(await ui('reset').isVisible(), true);assert.equal(await ui('grabGuide').isVisible(), false);
     assert.equal(await ui('grabRadius').isVisible(), true);
     assert.equal(await ui('grabRadius').evaluate(el => el.closest('label').firstChild.textContent.trim()), english ? 'Grab radius' : 'つかむ範囲');
     await page.screenshot({ path: fileURLToPath(new URL('../test-results/preview-grab.png', import.meta.url)) });
@@ -52,6 +53,23 @@ try {
       const labels = await panel.evaluate(el => { const copy = el.cloneNode(true);copy.querySelector('#selectHint').remove();return copy.textContent; });
       assert.doesNotMatch(labels, /[ぁ-んァ-ヶ一-龠]/, 'English controls contain no untranslated Japanese; image alt text is kept as supplied by the page');
     }
+    // Move the real panel, then exercise both content growth and viewport changes.
+    await page.setViewportSize({ width: 1280, height: 900 });
+    const handle = ui('panelHandle'), start = await handle.boundingBox(), beforeMove = await panel.boundingBox();
+    await page.mouse.move(start.x + 20, start.y + 15);await page.mouse.down();
+    await page.mouse.move(start.x - 280, start.y - 185, { steps: 8 });await page.mouse.up();
+    const moved = await panel.boundingBox();
+    assert.ok(Math.abs(moved.x - (beforeMove.x - 300)) < 1 && Math.abs(moved.y - (beforeMove.y - 200)) < 1, 'dragging the heading moves the panel');
+    await ui('fold').click();assert.equal(await ui('detail').isVisible(), false, 'fold still works after moving');
+    const foldedHandle = await handle.boundingBox();
+    await page.mouse.move(foldedHandle.x + 20, foldedHandle.y + 15);await page.mouse.down();
+    await page.mouse.move(1279, 899);await page.mouse.up();
+    await ui('fold').click();await page.waitForTimeout(50);
+    let constrained = await panel.boundingBox();
+    assert.ok(constrained.x >= 12 && constrained.y >= 12 && constrained.x + constrained.width <= 1269 && constrained.y + constrained.height <= 889, 'expanding a moved panel keeps all controls on screen');
+    await page.setViewportSize({ width: 360, height: 600 });await page.waitForTimeout(50);
+    constrained = await panel.boundingBox();
+    assert.ok(constrained.x >= 11 && constrained.y >= 11 && constrained.x + constrained.width <= 349 && constrained.y + constrained.height <= 589, 'resizing keeps a moved panel within the smaller viewport');
     await control('#close').click();await state('brush');assert.equal(await host.count(), 1, 'preview can reopen the real UI after closing');
     await control('#release').click();
     await control('#select').click();

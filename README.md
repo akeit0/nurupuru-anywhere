@@ -42,6 +42,7 @@ Brush and material settings carry over when you select another image. Settings a
 
 The current status, ON/OFF, and Release image remain available while the panel is folded.
 Click the extension's toolbar button again to expand the panel.
+Drag the panel heading to move the controls out of the way.
 The image selection state appears inside the Select image button.
 While changing images, click Selecting image / Cancel again or press Esc to return to the previous mask and effect.
 
